@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { Play, BookOpen, Users, TrendingUp, ArrowRight, Menu, X, Star, Award, Target } from 'lucide-react';
@@ -193,68 +192,86 @@ const Index = () => {
 
       {/* CTA Section */}
       <section className="py-20 bg-gradient-to-r from-blue-600 to-purple-600">
-        <div className="max-w-4xl mx-auto text-center px-4 sm:px-6 lg:px-8">
-          <h2 className="text-3xl md:text-4xl font-bold text-white mb-4">
-            Ready to Excel in Your NUET?
+        <div className="max-w-4xl mx-auto text-center px-4">
+          <h2 className="text-3xl md:text-4xl font-bold text-white mb-6">
+            Ready to Start Your NUET Preparation?
           </h2>
-          <p className="text-lg text-blue-100 mb-8">
-            Join thousands of students who have improved their scores with our comprehensive practice platform.
+          <p className="text-xl text-blue-100 mb-8">
+            Join thousands of students who are already preparing with NUET Prep
           </p>
-          <Link to="/quiz">
-            <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg font-semibold">
-              Begin Your Journey
-              <ArrowRight className="w-5 h-5 ml-2" />
-            </Button>
-          </Link>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Link to="/practice">
+              <Button size="lg" className="bg-white text-blue-600 hover:bg-gray-100 px-8 py-4 text-lg font-semibold">
+                Start Practice Tests
+              </Button>
+            </Link>
+            <Link to="/about">
+              <Button 
+                size="lg" 
+                variant="outline" 
+                className="border-white text-white hover:bg-white hover:text-blue-600 px-8 py-4 text-lg font-semibold"
+              >
+                Learn More
+              </Button>
+            </Link>
+          </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="bg-gray-900 text-white py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <footer className="bg-gray-900 text-white py-16">
+        <div className="max-w-6xl mx-auto px-4">
           <div className="grid md:grid-cols-4 gap-8">
-            <div>
+            <div className="md:col-span-2">
               <div className="flex items-center space-x-2 mb-4">
                 <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                   <BookOpen className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-xl font-bold">NUET Prep</span>
               </div>
-              <p className="text-gray-400">
-                Kazakhstan's premier NUET preparation platform for Nazarbayev University aspirants.
+              <p className="text-gray-400 mb-6 max-w-md">
+                Your comprehensive platform for Nazarbayev University Entrance Test preparation. 
+                Practice with real exam-style questions and track your progress.
               </p>
+              <div className="flex space-x-4">
+                <a href="#" className="text-gray-400 hover:text-white">
+                  <span className="sr-only">Facebook</span>
+                  📘
+                </a>
+                <a href="#" className="text-gray-400 hover:text-white">
+                  <span className="sr-only">Twitter</span>
+                  🐦
+                </a>
+                <a href="#" className="text-gray-400 hover:text-white">
+                  <span className="sr-only">Instagram</span>
+                  📷
+                </a>
+              </div>
             </div>
             
             <div>
-              <h3 className="font-semibold mb-4">Platform</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li><Link to="/quiz" className="hover:text-white transition-colors">Practice Tests</Link></li>
-                <li><Link to="/about" className="hover:text-white transition-colors">About</Link></li>
-                <li><Link to="/donate" className="hover:text-white transition-colors">Support Us</Link></li>
+              <h4 className="text-lg font-semibold mb-4">Quick Links</h4>
+              <ul className="space-y-2">
+                <li><Link to="/practice" className="text-gray-400 hover:text-white">Practice Tests</Link></li>
+                <li><Link to="/study-guides" className="text-gray-400 hover:text-white">Study Guides</Link></li>
+                <li><Link to="/faq" className="text-gray-400 hover:text-white">FAQ</Link></li>
+                <li><Link to="/contact" className="text-gray-400 hover:text-white">Contact</Link></li>
               </ul>
             </div>
             
             <div>
-              <h3 className="font-semibold mb-4">Resources</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">Study Guides</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">FAQ</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
-              </ul>
-            </div>
-            
-            <div>
-              <h3 className="font-semibold mb-4">About NU</h3>
-              <ul className="space-y-2 text-gray-400">
-                <li><a href="https://nu.edu.kz" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Official Website</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Admission Info</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Programs</a></li>
+              <h4 className="text-lg font-semibold mb-4">NUET Resources</h4>
+              <ul className="space-y-2">
+                <li><a href="https://nu.edu.kz" className="text-gray-400 hover:text-white" target="_blank" rel="noopener noreferrer">Official Website</a></li>
+                <li><a href="https://nu.edu.kz/admissions" className="text-gray-400 hover:text-white" target="_blank" rel="noopener noreferrer">Admission Info</a></li>
+                <li><a href="https://nu.edu.kz/academics" className="text-gray-400 hover:text-white" target="_blank" rel="noopener noreferrer">Programs</a></li>
+                <li><Link to="/about" className="text-gray-400 hover:text-white">About NUET</Link></li>
               </ul>
             </div>
           </div>
           
-          <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 NUET Prep. Built for Kazakhstan students aspiring to join Nazarbayev University.</p>
+          <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
+            <p>&copy; 2024 NUET Prep. Made with ❤️ for Kazakhstan students.</p>
           </div>
         </div>
       </footer>
