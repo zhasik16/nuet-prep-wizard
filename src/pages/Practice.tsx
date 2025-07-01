@@ -1,25 +1,47 @@
 
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Home, Clock, Target, ChevronRight, Lock } from 'lucide-react';
+import { BookOpen, Home, Clock, Target, ChevronRight, Lock, User, LogOut } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import { useAuth } from '@/hooks/useAuth';
+import { supabase } from '@/integrations/supabase/client';
 
 const Practice = () => {
   const navigate = useNavigate();
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { user, signOut } = useAuth();
+  const [questionCounts, setQuestionCounts] = useState<{[key: string]: number}>({});
 
-  // Mock login check - replace with real auth when Supabase is connected
   useEffect(() => {
-    const user = localStorage.getItem('user');
-    setIsLoggedIn(!!user);
+    loadQuestionCounts();
   }, []);
+
+  const loadQuestionCounts = async () => {
+    const testTypes = [
+      'NUET - Mathematics',
+      'NUET - Critical Thinking', 
+      'NUET - Reading Comprehension',
+      'NUET - English Language'
+    ];
+
+    const counts: {[key: string]: number} = {};
+    
+    for (const testType of testTypes) {
+      const { count } = await supabase
+        .from('questions')
+        .select('*', { count: 'exact', head: true })
+        .eq('test_type', testType);
+      
+      counts[testType] = count || 0;
+    }
+    
+    setQuestionCounts(counts);
+  };
 
   const practiceTests = [
     {
       id: 1,
       type: 'NUET - Mathematics',
       description: 'Algebra, Geometry, Statistics, and Problem Solving',
-      questions: 30,
       difficulty: 'Mixed',
       color: 'bg-blue-500'
     },
@@ -27,7 +49,6 @@ const Practice = () => {
       id: 2,
       type: 'NUET - Critical Thinking',
       description: 'Logical Reasoning, Pattern Recognition, and Analysis',
-      questions: 30,
       difficulty: 'Mixed',
       color: 'bg-purple-500'
     },
@@ -35,7 +56,6 @@ const Practice = () => {
       id: 3,
       type: 'NUET - Reading Comprehension',
       description: 'Text Analysis, Vocabulary, and Reading Skills',
-      questions: 30,
       difficulty: 'Mixed',
       color: 'bg-green-500'
     },
@@ -43,18 +63,22 @@ const Practice = () => {
       id: 4,
       type: 'NUET - English Language',
       description: 'Grammar, Vocabulary, and Language Usage',
-      questions: 30,
       difficulty: 'Mixed',
       color: 'bg-orange-500'
     }
   ];
 
   const handleStartTest = (testId: number) => {
-    if (!isLoggedIn) {
+    if (!user) {
       navigate('/login');
       return;
     }
     navigate(`/quiz/${testId}`);
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
   };
 
   return (
@@ -73,20 +97,25 @@ const Practice = () => {
             </Link>
             
             <div className="flex items-center space-x-4">
-              {!isLoggedIn ? (
+              {!user ? (
                 <Link to="/login">
                   <Button>Sign In</Button>
                 </Link>
               ) : (
-                <Button 
-                  variant="outline" 
-                  onClick={() => {
-                    localStorage.removeItem('user');
-                    setIsLoggedIn(false);
-                  }}
-                >
-                  Sign Out
-                </Button>
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <User className="w-4 h-4 text-gray-600" />
+                    <span className="text-sm text-gray-600">{user.email}</span>
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={handleSignOut}
+                  >
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </Button>
+                </div>
               )}
               <Link to="/">
                 <Button variant="outline" size="sm">
@@ -107,7 +136,7 @@ const Practice = () => {
           </h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
             Master the Nazarbayev University Entrance Test with our comprehensive practice tests. 
-            Each test contains 30 carefully crafted questions designed to simulate the real exam experience.
+            Each test contains carefully crafted questions designed to simulate the real exam experience.
           </p>
         </div>
 
@@ -138,7 +167,7 @@ const Practice = () => {
                 </div>
                 <div className="flex items-center">
                   <Target className="w-4 h-4 mr-1" />
-                  {test.questions} Questions
+                  {questionCounts[test.type] || 0} Questions
                 </div>
                 <div>
                   {test.difficulty}
@@ -148,12 +177,15 @@ const Practice = () => {
               <Button 
                 onClick={() => handleStartTest(test.id)}
                 className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
+                disabled={!questionCounts[test.type]}
               >
-                {!isLoggedIn ? (
+                {!user ? (
                   <>
                     <Lock className="w-4 h-4 mr-2" />
                     Sign In to Start
                   </>
+                ) : !questionCounts[test.type] ? (
+                  'Loading...'
                 ) : (
                   <>
                     Start Practice Test
