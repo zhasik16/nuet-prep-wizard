@@ -8,12 +8,13 @@ import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/hooks/useAuth';
 import { AuthGuard } from '@/components/AuthGuard';
 import { useToast } from '@/hooks/use-toast';
+import type { Json } from '@/integrations/supabase/types';
 
 interface Question {
   id: string;
   subject: string;
   question: string;
-  options: string[];
+  options: Json;
   correct_answer: string;
   explanation: string;
   test_type: string;
@@ -172,6 +173,9 @@ const Quiz = () => {
   const currentQ = questions[currentQuestion];
   const progress = ((currentQuestion + 1) / questions.length) * 100;
 
+  // Parse options as string array
+  const optionsArray = Array.isArray(currentQ.options) ? currentQ.options as string[] : [];
+
   return (
     <AuthGuard>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -226,7 +230,7 @@ const Quiz = () => {
             </div>
 
             <div className="space-y-3 mb-8">
-              {currentQ.options.map((option, index) => {
+              {optionsArray.map((option, index) => {
                 const optionLetter = option.charAt(0);
                 const isSelected = answers[currentQuestion] === optionLetter;
                 
