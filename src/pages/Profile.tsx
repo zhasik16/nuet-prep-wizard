@@ -10,12 +10,21 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { AuthGuard } from '@/components/AuthGuard';
 
+interface ProfileData {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  nickname: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
 const Profile = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const { toast } = useToast();
   
-  const [profile, setProfile] = useState<any>(null);
+  const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
     full_name: '',
@@ -154,7 +163,7 @@ const Profile = () => {
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <Link to="/" className="flex items-center space-x-2">
-                <div className="w-8178 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
                   <BookOpen className="w-5 h-5 text-white" />
                 </div>
                 <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Home, Clock, Target, ChevronRight, Lock, User, LogOut } from 'lucide-react';
@@ -10,7 +9,7 @@ const Practice = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [questionCounts, setQuestionCounts] = useState<{[key: string]: number}>({});
-  const [userProfile, setUserProfile] = useState<{nickname?: string}>({});
+  const [userProfile, setUserProfile] = useState<{nickname?: string; full_name?: string}>({});
 
   useEffect(() => {
     loadQuestionCounts();
@@ -105,7 +104,7 @@ const Practice = () => {
     navigate('/');
   };
 
-  const displayName = userProfile.nickname || user?.user_metadata?.nickname || user?.email?.split('@')[0] || 'User';
+  const displayName = userProfile.nickname || userProfile.full_name || user?.user_metadata?.nickname || user?.email?.split('@')[0] || 'User';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
