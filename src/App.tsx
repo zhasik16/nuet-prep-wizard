@@ -12,6 +12,7 @@ import Results from "./pages/Results";
 import About from "./pages/About";
 import Donate from "./pages/Donate";
 import Login from "./pages/Login";
+import Profile from "./pages/Profile";
 import StudyGuides from "./pages/StudyGuides";
 import FAQ from "./pages/FAQ";
 import Contact from "./pages/Contact";
@@ -34,6 +35,7 @@ const App = () => (
             <Route path="/about" element={<About />} />
             <Route path="/donate" element={<Donate />} />
             <Route path="/login" element={<Login />} />
+            <Route path="/profile" element={<Profile />} />
             <Route path="/study-guides" element={<StudyGuides />} />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/contact" element={<Contact />} />

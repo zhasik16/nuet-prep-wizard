@@ -10,10 +10,34 @@ const Practice = () => {
   const navigate = useNavigate();
   const { user, signOut } = useAuth();
   const [questionCounts, setQuestionCounts] = useState<{[key: string]: number}>({});
+  const [userProfile, setUserProfile] = useState<{nickname?: string}>({});
 
   useEffect(() => {
     loadQuestionCounts();
-  }, []);
+    if (user) {
+      loadUserProfile();
+    }
+  }, [user]);
+
+  const loadUserProfile = async () => {
+    if (!user) return;
+    
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('id', user.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        console.error('Error loading profile:', error);
+      } else if (data) {
+        setUserProfile(data);
+      }
+    } catch (error) {
+      console.error('Error loading profile:', error);
+    }
+  };
 
   const loadQuestionCounts = async () => {
     const testTypes = [
@@ -81,6 +105,8 @@ const Practice = () => {
     navigate('/');
   };
 
+  const displayName = userProfile.nickname || user?.user_metadata?.nickname || user?.email?.split('@')[0] || 'User';
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Navigation */}
@@ -105,7 +131,7 @@ const Practice = () => {
                 <div className="flex items-center space-x-4">
                   <div className="flex items-center space-x-2">
                     <User className="w-4 h-4 text-gray-600" />
-                    <span className="text-sm text-gray-600">{user.email}</span>
+                    <span className="text-sm text-gray-600">{displayName}</span>
                   </div>
                   <Button 
                     variant="outline" 
