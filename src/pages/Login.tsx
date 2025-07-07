@@ -1,6 +1,5 @@
-
-import { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { BookOpen, Mail, Lock, User, Eye, EyeOff, AtSign } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -11,15 +10,46 @@ const Login = () => {
   const [isLogin, setIsLogin] = useState(true);
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [nickname, setNickname] = useState('');
   const [showPassword, setShowPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [showForgotPassword, setShowForgotPassword] = useState(false);
+  const [showPasswordReset, setShowPasswordReset] = useState(false);
   
-  const { signIn, signUp, resetPassword } = useAuth();
+  const { signIn, signUp, resetPassword, updatePassword, user } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+
+  // Check if user is coming from email verification or password reset
+  useEffect(() => {
+    const type = searchParams.get('type');
+    
+    if (type === 'recovery') {
+      setShowPasswordReset(true);
+      toast({
+        title: "Password Reset",
+        description: "Please enter your new password below.",
+      });
+    } else if (type === 'signup') {
+      toast({
+        title: "Email Verified!",
+        description: "Your email has been verified successfully. You can now sign in.",
+      });
+    }
+  }, [searchParams, toast]);
+
+  // Redirect if user is already logged in
+  useEffect(() => {
+    if (user && !showPasswordReset) {
+      navigate('/practice');
+    }
+  }, [user, navigate, showPasswordReset]);
 
   const validateEmail = (email: string) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -28,6 +58,55 @@ const Login = () => {
 
   const validatePassword = (password: string) => {
     return password.length >= 6;
+  };
+
+  const handlePasswordReset = async (e: React.FormEvent) => {
+    e.preventDefault();
+    
+    if (!validatePassword(newPassword)) {
+      toast({
+        title: "Invalid Password",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (newPassword !== confirmPassword) {
+      toast({
+        title: "Passwords Don't Match",
+        description: "Please make sure both passwords match.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const { error } = await updatePassword(newPassword);
+      if (error) {
+        toast({
+          title: "Password Update Failed",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Password Updated Successfully!",
+          description: "You can now use your new password to sign in.",
+        });
+        setShowPasswordReset(false);
+        navigate('/practice');
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while updating your password.",
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -103,7 +182,7 @@ const Login = () => {
         } else {
           toast({
             title: "Account Created Successfully!",
-            description: "Please check your email for a verification link before signing in.",
+            description: "Please check your email for a verification link. Click the link to verify your account and you'll be automatically signed in.",
           });
           setIsLogin(true);
           setPassword('');
@@ -151,7 +230,7 @@ const Login = () => {
       } else {
         toast({
           title: "Password Reset Email Sent",
-          description: "Please check your email for password reset instructions.",
+          description: "Please check your email for password reset instructions. Click the link in the email to reset your password.",
         });
         setShowForgotPassword(false);
       }
@@ -178,6 +257,96 @@ const Login = () => {
     setIsLogin(!isLogin);
     resetForm();
   };
+
+  // Password reset form
+  if (showPasswordReset) {
+    return (
+      <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50 flex items-center justify-center p-4">
+        <div className="w-full max-w-md">
+          {/* Header */}
+          <div className="text-center mb-8">
+            <Link to="/" className="inline-flex items-center space-x-2 mb-6">
+              <div className="w-10 h-10 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-white" />
+              </div>
+              <span className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
+                NUET Prep
+              </span>
+            </Link>
+            <h1 className="text-3xl font-bold text-gray-900 mb-2">
+              Set New Password
+            </h1>
+            <p className="text-gray-600">
+              Enter your new password below
+            </p>
+          </div>
+
+          {/* Form */}
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <form onSubmit={handlePasswordReset} className="space-y-6">
+              <div>
+                <label htmlFor="newPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  New Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <Input
+                    id="newPassword"
+                    type={showNewPassword ? 'text' : 'password'}
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    className="pl-10 pr-10"
+                    placeholder="Enter your new password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowNewPassword(!showNewPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showNewPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm New Password
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-5 h-5" />
+                  <Input
+                    id="confirmPassword"
+                    type={showConfirmPassword ? 'text' : 'password'}
+                    value={confirmPassword}
+                    onChange={(e) => setConfirmPassword(e.target.value)}
+                    className="pl-10 pr-10"
+                    placeholder="Confirm your new password"
+                    required
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                    className="absolute right-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+                  </button>
+                </div>
+              </div>
+
+              <Button
+                type="submit"
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                disabled={loading}
+              >
+                {loading ? 'Updating Password...' : 'Update Password'}
+              </Button>
+            </form>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   if (showForgotPassword) {
     return (

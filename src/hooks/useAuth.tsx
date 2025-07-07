@@ -10,6 +10,7 @@ interface AuthContextType {
   signUp: (email: string, password: string, fullName: string, nickname: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error: any }>;
+  updatePassword: (password: string) => Promise<{ error: any }>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -31,6 +32,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         console.log('Auth state changed:', event, session?.user?.email);
         setUser(session?.user ?? null);
         setLoading(false);
+
+        // Handle email verification and password recovery
+        if (event === 'SIGNED_IN' && session?.user) {
+          console.log('User signed in successfully:', session.user.email);
+          // If user was redirected after email verification, redirect to practice page
+          const urlParams = new URLSearchParams(window.location.search);
+          if (urlParams.get('type') === 'signup' || urlParams.get('type') === 'email_change') {
+            setTimeout(() => {
+              window.location.href = '/practice';
+            }, 1000);
+          }
+        }
+
+        if (event === 'PASSWORD_RECOVERY') {
+          console.log('Password recovery event triggered');
+          // User clicked on password reset link
+          // The session will contain the user info needed for password update
+        }
       }
     );
 
@@ -84,7 +103,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         email: cleanEmail,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/`,
+          emailRedirectTo: `${window.location.origin}/?type=signup`,
           data: {
             full_name: fullName.trim(),
             nickname: nickname.trim(),
@@ -128,7 +147,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       console.log('Attempting password reset for email:', cleanEmail);
       
       const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${window.location.origin}/reset-password`,
+        redirectTo: `${window.location.origin}/login?type=recovery`,
       });
       
       if (error) {
@@ -144,6 +163,26 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   };
 
+  const updatePassword = async (password: string) => {
+    try {
+      console.log('Attempting to update password');
+      const { error } = await supabase.auth.updateUser({
+        password: password
+      });
+      
+      if (error) {
+        console.error('Password update error:', error);
+        return { error };
+      }
+      
+      console.log('Password updated successfully');
+      return { error: null };
+    } catch (err) {
+      console.error('Unexpected password update error:', err);
+      return { error: { message: 'An unexpected error occurred during password update' } };
+    }
+  };
+
   const value = {
     user,
     loading,
@@ -151,6 +190,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     signUp,
     signOut,
     resetPassword,
+    updatePassword,
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
