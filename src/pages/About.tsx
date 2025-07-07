@@ -287,7 +287,7 @@ const About = () => {
           </div>
           
           <div className="border-t border-gray-800 mt-8 pt-8 text-center text-gray-400">
-            <p>&copy; 2024 NUET Prep. Built for Kazakhstan students aspiring to join Nazarbayev University.</p>
+            <p>&copy; 2025 NUET Prep. Built for Kazakhstan students aspiring to join Nazarbayev University.</p>
           </div>
         </div>
       </footer>
