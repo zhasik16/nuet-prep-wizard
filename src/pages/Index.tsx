@@ -272,8 +272,7 @@ const Index = () => {
           </div>
           
           <div className="border-t border-gray-800 mt-12 pt-8 text-center text-gray-400">
-            <p>&copy; 2025 NUET Prep. Made with ❤️ for Kazakhstan students.</p><br>
-            <p>Creator: Imash Zhassulan</p>
+            <p>&copy; 2025 NUET Prep. Made with ❤️ for Kazakhstan students.</p>
           </div>
         </div>
       </footer>
