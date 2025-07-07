@@ -21,42 +21,102 @@ const Login = () => {
   const { toast } = useToast();
   const navigate = useNavigate();
 
+  const validateEmail = (email: string) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    return emailRegex.test(email);
+  };
+
+  const validatePassword = (password: string) => {
+    return password.length >= 6;
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    
+    if (!validateEmail(email)) {
+      toast({
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!validatePassword(password)) {
+      toast({
+        title: "Invalid Password",
+        description: "Password must be at least 6 characters long.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!isLogin && (!fullName.trim() || !nickname.trim())) {
+      toast({
+        title: "Missing Information",
+        description: "Please fill in all required fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
 
     try {
       if (isLogin) {
         const { error } = await signIn(email, password);
         if (error) {
+          let errorMessage = error.message;
+          if (error.message.includes('Invalid login credentials')) {
+            errorMessage = 'Invalid email or password. Please check your credentials and try again.';
+          } else if (error.message.includes('Email not confirmed')) {
+            errorMessage = 'Please check your email and click the verification link before signing in.';
+          }
+          
           toast({
-            title: "Error",
-            description: error.message,
+            title: "Sign In Failed",
+            description: errorMessage,
             variant: "destructive",
           });
         } else {
           toast({
-            title: "Success",
-            description: "Signed in successfully!",
+            title: "Welcome Back!",
+            description: "You have been signed in successfully.",
           });
           navigate('/practice');
         }
       } else {
         const { error } = await signUp(email, password, fullName, nickname);
         if (error) {
+          let errorMessage = error.message;
+          if (error.message.includes('already registered') || error.message.includes('already exists')) {
+            errorMessage = 'An account with this email already exists. Please try signing in instead.';
+          } else if (error.message.includes('Password should be at least')) {
+            errorMessage = 'Password must be at least 6 characters long.';
+          }
+          
           toast({
-            title: "Error",
-            description: error.message,
+            title: "Sign Up Failed",
+            description: errorMessage,
             variant: "destructive",
           });
         } else {
           toast({
-            title: "Success",
-            description: "Account created! Please check your email to verify your account.",
+            title: "Account Created Successfully!",
+            description: "Please check your email for a verification link before signing in.",
           });
           setIsLogin(true);
+          setPassword('');
+          setFullName('');
+          setNickname('');
         }
       }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -64,10 +124,11 @@ const Login = () => {
 
   const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!email) {
+    
+    if (!validateEmail(email)) {
       toast({
-        title: "Error",
-        description: "Please enter your email address.",
+        title: "Invalid Email",
+        description: "Please enter a valid email address.",
         variant: "destructive",
       });
       return;
@@ -77,21 +138,45 @@ const Login = () => {
     try {
       const { error } = await resetPassword(email);
       if (error) {
+        let errorMessage = error.message;
+        if (error.message.includes('not found')) {
+          errorMessage = 'No account found with this email address.';
+        }
+        
         toast({
-          title: "Error",
-          description: error.message,
+          title: "Password Reset Failed",
+          description: errorMessage,
           variant: "destructive",
         });
       } else {
         toast({
-          title: "Success",
-          description: "Password reset email sent! Check your inbox.",
+          title: "Password Reset Email Sent",
+          description: "Please check your email for password reset instructions.",
         });
         setShowForgotPassword(false);
       }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred while sending the reset email.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
+  };
+
+  const resetForm = () => {
+    setEmail('');
+    setPassword('');
+    setFullName('');
+    setNickname('');
+    setShowPassword(false);
+  };
+
+  const switchMode = () => {
+    setIsLogin(!isLogin);
+    resetForm();
   };
 
   if (showForgotPassword) {
@@ -148,7 +233,10 @@ const Login = () => {
 
             <div className="mt-6 text-center">
               <button
-                onClick={() => setShowForgotPassword(false)}
+                onClick={() => {
+                  setShowForgotPassword(false);
+                  resetForm();
+                }}
                 className="text-blue-600 hover:text-blue-700 font-medium"
               >
                 ← Back to Sign In
@@ -295,7 +383,7 @@ const Login = () => {
             <p className="text-gray-600">
               {isLogin ? "Don't have an account?" : "Already have an account?"}
               <button
-                onClick={() => setIsLogin(!isLogin)}
+                onClick={switchMode}
                 className="ml-2 text-blue-600 hover:text-blue-700 font-medium"
               >
                 {isLogin ? 'Sign up' : 'Sign in'}
