@@ -168,9 +168,32 @@ const Login = () => {
         const { error } = await signUp(email, password, fullName, nickname);
         if (error) {
           let errorMessage = error.message;
-          if (error.message.includes('already registered') || error.message.includes('already exists')) {
-            errorMessage = 'An account with this email already exists. Please try signing in instead.';
-          } else if (error.message.includes('Password should be at least')) {
+          
+          // Handle duplicate email errors with clear messaging
+          if (error.message.includes('already registered') || 
+              error.message.includes('already exists') ||
+              error.message.includes('This email is already registered')) {
+            errorMessage = 'This email is already registered. Please try signing in instead or use a different email address.';
+            
+            toast({
+              title: "Email Already Exists",
+              description: errorMessage,
+              variant: "destructive",
+            });
+            
+            // Suggest switching to login
+            setTimeout(() => {
+              toast({
+                title: "Try Signing In",
+                description: "If this is your email, click 'Sign in' below to access your account.",
+              });
+            }, 2000);
+            
+            setLoading(false);
+            return;
+          }
+          
+          if (error.message.includes('Password should be at least')) {
             errorMessage = 'Password must be at least 6 characters long.';
           }
           

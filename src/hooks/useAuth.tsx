@@ -82,28 +82,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       const cleanEmail = email.trim().toLowerCase();
       console.log('Attempting to sign up with email:', cleanEmail);
       
-      // Check if user already exists first
-      const { data: existingUser, error: checkError } = await supabase
-        .from('profiles')
-        .select('email')
-        .eq('email', cleanEmail)
-        .maybeSingle();
-        
-      if (checkError && checkError.code !== 'PGRST116') { // PGRST116 is "not found" which is okay
-        console.error('Error checking existing user:', checkError);
-        return { error: { message: 'Error checking user existence' } };
-      }
-      
-      if (existingUser) {
-        console.log('User already exists:', cleanEmail);
-        return { error: { message: 'An account with this email already exists. Please try signing in instead.' } };
-      }
-
+      // First attempt to sign up - Supabase will handle duplicate email detection
       const { data, error } = await supabase.auth.signUp({
         email: cleanEmail,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/?type=signup`,
+          emailRedirectTo: `${window.location.origin}/login?type=signup`,
           data: {
             full_name: fullName.trim(),
             nickname: nickname.trim(),
@@ -113,10 +97,27 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       
       if (error) {
         console.error('Sign up error:', error);
-        if (error.message.includes('already registered')) {
-          return { error: { message: 'An account with this email already exists. Please try signing in instead.' } };
+        
+        // Handle specific error cases
+        if (error.message.includes('User already registered')) {
+          return { error: { message: 'This email is already registered. Please try signing in instead.' } };
         }
+        
+        if (error.message.includes('already been registered')) {
+          return { error: { message: 'This email is already registered. Please try signing in instead.' } };
+        }
+        
+        if (error.message.includes('already registered')) {
+          return { error: { message: 'This email is already registered. Please try signing in instead.' } };
+        }
+        
         return { error };
+      }
+      
+      // If no error but user is null, it might be a duplicate email that Supabase handled silently
+      if (!data.user) {
+        console.log('No user returned, possible duplicate email');
+        return { error: { message: 'This email is already registered. Please try signing in instead.' } };
       }
       
       console.log('Sign up successful:', data.user?.email);
