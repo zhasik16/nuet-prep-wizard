@@ -8,7 +8,7 @@ const About = () => {
     {
       name: "Educational Team",
       role: "NUET Content Specialists",
-      description: "Former NU students and educators who understand the exam inside out"
+      description: "Passed NUET students and educators who understand the exam inside out"
     },
     {
       name: "Tech Team", 
@@ -102,8 +102,8 @@ const About = () => {
                 by providing high-quality, accessible practice materials and resources.
               </p>
               <p className="text-gray-600 mb-8">
-                Founded by educators and NU alumni, we understand the challenges students face 
-                when preparing for this crucial exam. That's why we've created a comprehensive 
+                Founded by Imash Zhassulan, I understand the challenges students face 
+                when preparing for this crucial exam. That's why I've created a comprehensive 
                 platform that simulates the real test experience while providing detailed 
                 feedback and progress tracking.
               </p>
@@ -215,14 +215,14 @@ const About = () => {
                 <Mail className="w-6 h-6 text-white" />
               </div>
               <div className="text-white font-medium">Email Us</div>
-              <div className="text-blue-100 text-sm">info@nuetprep.kz</div>
+              <div className="text-blue-100 text-sm">zhasco10@gmail.com</div>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mx-auto mb-3">
                 <Phone className="w-6 h-6 text-white" />
               </div>
               <div className="text-white font-medium">Call Us</div>
-              <div className="text-blue-100 text-sm">+7 (777) 123-4567</div>
+              <div className="text-blue-100 text-sm">+7 (708) 915-0504</div>
             </div>
             <div className="text-center">
               <div className="w-12 h-12 bg-white/20 rounded-lg flex items-center justify-center mx-auto mb-3">
