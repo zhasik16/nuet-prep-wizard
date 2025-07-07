@@ -133,8 +133,8 @@ const Donate = () => {
                 <strong>Alternative:</strong> You can also transfer directly to our Kaspi account
               </p>
               <div className="bg-gray-100 p-4 rounded-lg inline-block">
-                <p className="font-mono text-lg font-semibold text-gray-900">+7 777 123 4567</p>
-                <p className="text-sm text-gray-600">Account holder: NUET Prep Kazakhstan</p>
+                <p className="font-mono text-lg font-semibold text-gray-900">+7 708 915 0504</p>
+                <p className="text-sm text-gray-600">Account holder: Жасұлан И.</p>
               </div>
             </div>
           </div>
