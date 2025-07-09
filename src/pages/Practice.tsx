@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -10,7 +9,7 @@ import AccountSettings from '@/components/AccountSettings';
 
 const Practice = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, userProfile } = useAuth();
   const [showAccountSettings, setShowAccountSettings] = useState(false);
 
   const practiceCategories = [
@@ -103,7 +102,9 @@ const Practice = () => {
               <div className="flex items-center gap-4">
                 <div className="text-right">
                   <p className="text-sm text-gray-600">Welcome back,</p>
-                  <p className="font-semibold text-gray-900">{user.full_name || user.email}</p>
+                  <p className="font-semibold text-gray-900">
+                    {userProfile?.full_name || userProfile?.nickname || user.email}
+                  </p>
                 </div>
                 <Button
                   variant="outline"

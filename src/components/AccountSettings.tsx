@@ -30,13 +30,13 @@ interface AccountSettingsProps {
 }
 
 const AccountSettings: React.FC<AccountSettingsProps> = ({ isOpen, onClose }) => {
-  const { user, signOut, updateProfile, deleteAccount } = useAuth();
+  const { user, userProfile, signOut, updateProfile, deleteAccount } = useAuth();
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [formData, setFormData] = useState({
-    fullName: user?.full_name || '',
-    nickname: user?.nickname || '',
+    fullName: userProfile?.full_name || '',
+    nickname: userProfile?.nickname || '',
   });
   const [loading, setLoading] = useState(false);
 
@@ -196,8 +196,8 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ isOpen, onClose }) =>
                       onClick={() => {
                         setIsEditing(false);
                         setFormData({
-                          fullName: user?.full_name || '',
-                          nickname: user?.nickname || '',
+                          fullName: userProfile?.full_name || '',
+                          nickname: userProfile?.nickname || '',
                         });
                       }}
                       variant="outline"

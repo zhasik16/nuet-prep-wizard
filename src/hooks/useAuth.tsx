@@ -1,3 +1,4 @@
+
 import { useState, useEffect, useContext, createContext } from 'react';
 import {
   AuthChangeEvent,
@@ -5,17 +6,25 @@ import {
   SupabaseClient,
   User,
 } from '@supabase/supabase-js';
-import { Database } from '@/types/supabase';
+import { Database } from '@/integrations/supabase/types';
 import { useToast } from '@/hooks/use-toast';
+
+interface UserProfile {
+  full_name: string | null;
+  nickname: string | null;
+  email: string | null;
+}
 
 interface AuthContextProps {
   user: User | null;
+  userProfile: UserProfile | null;
   session: Session | null;
   loading: boolean;
-  signIn: (email: string) => Promise<void>;
-  signUp: (email: string, password?: string) => Promise<void>;
+  signIn: (email: string, password: string) => Promise<{ error: any }>;
+  signUp: (email: string, password: string, fullName: string, nickname: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<void>;
+  resetPassword: (email: string) => Promise<{ error: any }>;
+  updatePassword: (newPassword: string) => Promise<{ error: any }>;
   updateProfile: (fullName: string, nickname: string) => Promise<any>;
   deleteAccount: () => Promise<any>;
 }
@@ -29,6 +38,7 @@ interface Props {
 
 export const AuthProvider: React.FC<Props> = ({ supabase, children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
@@ -43,6 +53,7 @@ export const AuthProvider: React.FC<Props> = ({ supabase, children }) => {
 
       if (session?.user) {
         setUser(session.user);
+        await fetchUserProfile(session.user.id);
       }
 
       setLoading(false);
@@ -53,57 +64,74 @@ export const AuthProvider: React.FC<Props> = ({ supabase, children }) => {
     supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       setSession(session);
       setUser(session?.user || null);
+      
+      if (session?.user) {
+        await fetchUserProfile(session.user.id);
+      } else {
+        setUserProfile(null);
+      }
+      
       setLoading(false);
     });
   }, [supabase]);
 
-  const signIn = async (email: string) => {
+  const fetchUserProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('full_name, nickname, email')
+        .eq('id', userId)
+        .single();
+
+      if (error) {
+        console.error('Error fetching user profile:', error);
+        return;
+      }
+
+      setUserProfile(data);
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
+    }
+  };
+
+  const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
-      const { error } = await supabase.auth.signInWithOtp({
+      const { data, error } = await supabase.auth.signInWithPassword({
         email,
-        options: {
-          shouldCreateUser: false,
-          emailRedirectTo: `${window.location.origin}/auth/callback`,
-        },
+        password,
       });
-      if (error) throw error;
-      toast({
-        title: 'Check your email',
-        description: 'We have sent you a magic link to sign in.',
-      });
+      
+      if (error) {
+        return { error };
+      }
+      
+      return { error: null };
     } catch (error: any) {
-      toast({
-        title: 'Error signing in',
-        description: error.error_description || error.message,
-        variant: 'destructive',
-      });
+      return { error };
     } finally {
       setLoading(false);
     }
   };
 
-  const signUp = async (email: string, password?: string) => {
+  const signUp = async (email: string, password: string, fullName: string, nickname: string) => {
     setLoading(true);
     try {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
         options: {
+          data: {
+            full_name: fullName,
+            nickname: nickname,
+          },
           emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
-      if (error) throw error;
-      toast({
-        title: 'Check your email',
-        description: 'We have sent you a magic link to confirm your email address.',
-      });
+      
+      return { error };
     } catch (error: any) {
-      toast({
-        title: 'Error signing up',
-        description: error.error_description || error.message,
-        variant: 'destructive',
-      });
+      return { error };
     } finally {
       setLoading(false);
     }
@@ -129,21 +157,26 @@ export const AuthProvider: React.FC<Props> = ({ supabase, children }) => {
     setLoading(true);
     try {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/update-password`,
+        redirectTo: `${window.location.origin}/auth/callback?type=recovery`,
       });
-      if (error) throw error;
-      toast({
-        title: 'Check your email',
-        description: 'We have sent you a link to reset your password.',
-      });
+      
+      return { error };
     } catch (error: any) {
-      toast({
-        title: 'Error resetting password',
-        description: error.error_description || error.message,
-        variant: 'destructive',
-      });
+      return { error };
     } finally {
       setLoading(false);
+    }
+  };
+
+  const updatePassword = async (newPassword: string) => {
+    try {
+      const { error } = await supabase.auth.updateUser({
+        password: newPassword
+      });
+      
+      return { error };
+    } catch (error: any) {
+      return { error };
     }
   };
 
@@ -162,8 +195,8 @@ export const AuthProvider: React.FC<Props> = ({ supabase, children }) => {
 
       if (error) throw error;
 
-      // Update local user state
-      setUser(prev => prev ? {
+      // Update local user profile state
+      setUserProfile(prev => prev ? {
         ...prev,
         full_name: fullName,
         nickname: nickname
@@ -202,7 +235,19 @@ export const AuthProvider: React.FC<Props> = ({ supabase, children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, resetPassword, updateProfile, deleteAccount }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      userProfile, 
+      session, 
+      loading, 
+      signIn, 
+      signUp, 
+      signOut, 
+      resetPassword, 
+      updatePassword, 
+      updateProfile, 
+      deleteAccount 
+    }}>
       {children}
     </AuthContext.Provider>
   );
