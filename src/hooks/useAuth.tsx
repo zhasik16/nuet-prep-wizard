@@ -1,206 +1,219 @@
+import { useState, useEffect, useContext, createContext } from 'react';
+import {
+  AuthChangeEvent,
+  Session,
+  SupabaseClient,
+  User,
+} from '@supabase/supabase-js';
+import { Database } from '@/types/supabase';
+import { useToast } from '@/hooks/use-toast';
 
-import { useState, useEffect, createContext, useContext, ReactNode } from 'react';
-import { supabase } from '@/integrations/supabase/client';
-import { User } from '@supabase/supabase-js';
-
-interface AuthContextType {
+interface AuthContextProps {
   user: User | null;
+  session: Session | null;
   loading: boolean;
-  signIn: (email: string, password: string) => Promise<{ error: any }>;
-  signUp: (email: string, password: string, fullName: string, nickname: string) => Promise<{ error: any }>;
+  signIn: (email: string) => Promise<void>;
+  signUp: (email: string, password?: string) => Promise<void>;
   signOut: () => Promise<void>;
-  resetPassword: (email: string) => Promise<{ error: any }>;
-  updatePassword: (password: string) => Promise<{ error: any }>;
+  resetPassword: (email: string) => Promise<void>;
+  updateProfile: (fullName: string, nickname: string) => Promise<any>;
+  deleteAccount: () => Promise<any>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextProps | undefined>(undefined);
 
-export const AuthProvider = ({ children }: { children: ReactNode }) => {
+interface Props {
+  supabase: SupabaseClient<Database>;
+  children: React.ReactNode;
+}
+
+export const AuthProvider: React.FC<Props> = ({ supabase, children }) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const { toast } = useToast();
 
   useEffect(() => {
-    // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
-      setUser(session?.user ?? null);
+    const getSession = async () => {
+      const {
+        data: { session },
+      } = await supabase.auth.getSession();
+
+      setSession(session);
+
+      if (session?.user) {
+        setUser(session.user);
+      }
+
+      setLoading(false);
+    };
+
+    getSession();
+
+    supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+      setSession(session);
+      setUser(session?.user || null);
       setLoading(false);
     });
+  }, [supabase]);
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        console.log('Auth state changed:', event, session?.user?.email);
-        setUser(session?.user ?? null);
-        setLoading(false);
-
-        // Handle email verification and password recovery
-        if (event === 'SIGNED_IN' && session?.user) {
-          console.log('User signed in successfully:', session.user.email);
-          // If user was redirected after email verification, redirect to practice page
-          const urlParams = new URLSearchParams(window.location.search);
-          if (urlParams.get('type') === 'signup' || urlParams.get('type') === 'email_change') {
-            setTimeout(() => {
-              window.location.href = '/practice';
-            }, 1000);
-          }
-        }
-
-        if (event === 'PASSWORD_RECOVERY') {
-          console.log('Password recovery event triggered');
-          // User clicked on password reset link
-          // The session will contain the user info needed for password update
-        }
-      }
-    );
-
-    return () => subscription.unsubscribe();
-  }, []);
-
-  const signIn = async (email: string, password: string) => {
+  const signIn = async (email: string) => {
+    setLoading(true);
     try {
-      console.log('Attempting to sign in with email:', email);
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email: email.trim().toLowerCase(),
-        password,
+      const { error } = await supabase.auth.signInWithOtp({
+        email,
+        options: {
+          shouldCreateUser: false,
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
+        },
       });
-      
-      if (error) {
-        console.error('Sign in error:', error);
-        return { error };
-      }
-      
-      console.log('Sign in successful:', data.user?.email);
-      return { error: null };
-    } catch (err) {
-      console.error('Unexpected sign in error:', err);
-      return { error: { message: 'An unexpected error occurred during sign in' } };
+      if (error) throw error;
+      toast({
+        title: 'Check your email',
+        description: 'We have sent you a magic link to sign in.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error signing in',
+        description: error.error_description || error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const signUp = async (email: string, password: string, fullName: string, nickname: string) => {
+  const signUp = async (email: string, password?: string) => {
+    setLoading(true);
     try {
-      const cleanEmail = email.trim().toLowerCase();
-      console.log('Attempting to sign up with email:', cleanEmail);
-      
-      // First attempt to sign up - Supabase will handle duplicate email detection
       const { data, error } = await supabase.auth.signUp({
-        email: cleanEmail,
+        email,
         password,
         options: {
-          emailRedirectTo: `${window.location.origin}/login?type=signup`,
-          data: {
-            full_name: fullName.trim(),
-            nickname: nickname.trim(),
-          },
+          emailRedirectTo: `${window.location.origin}/auth/callback`,
         },
       });
-      
-      if (error) {
-        console.error('Sign up error:', error);
-        
-        // Handle specific error cases
-        if (error.message.includes('User already registered')) {
-          return { error: { message: 'This email is already registered. Please try signing in instead.' } };
-        }
-        
-        if (error.message.includes('already been registered')) {
-          return { error: { message: 'This email is already registered. Please try signing in instead.' } };
-        }
-        
-        if (error.message.includes('already registered')) {
-          return { error: { message: 'This email is already registered. Please try signing in instead.' } };
-        }
-        
-        return { error };
-      }
-      
-      // If no error but user is null, it might be a duplicate email that Supabase handled silently
-      if (!data.user) {
-        console.log('No user returned, possible duplicate email');
-        return { error: { message: 'This email is already registered. Please try signing in instead.' } };
-      }
-      
-      console.log('Sign up successful:', data.user?.email);
-      return { error: null };
-    } catch (err) {
-      console.error('Unexpected sign up error:', err);
-      return { error: { message: 'An unexpected error occurred during sign up' } };
+      if (error) throw error;
+      toast({
+        title: 'Check your email',
+        description: 'We have sent you a magic link to confirm your email address.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error signing up',
+        description: error.error_description || error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   const signOut = async () => {
+    setLoading(true);
     try {
-      console.log('Attempting to sign out');
       const { error } = await supabase.auth.signOut();
-      if (error) {
-        console.error('Sign out error:', error);
-      } else {
-        console.log('Sign out successful');
-      }
-    } catch (err) {
-      console.error('Unexpected sign out error:', err);
+      if (error) throw error;
+    } catch (error: any) {
+      toast({
+        title: 'Error signing out',
+        description: error.error_description || error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   const resetPassword = async (email: string) => {
+    setLoading(true);
     try {
-      const cleanEmail = email.trim().toLowerCase();
-      console.log('Attempting password reset for email:', cleanEmail);
-      
-      const { error } = await supabase.auth.resetPasswordForEmail(cleanEmail, {
-        redirectTo: `${window.location.origin}/login?type=recovery`,
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/update-password`,
       });
-      
-      if (error) {
-        console.error('Password reset error:', error);
-        return { error };
-      }
-      
-      console.log('Password reset email sent successfully');
-      return { error: null };
-    } catch (err) {
-      console.error('Unexpected password reset error:', err);
-      return { error: { message: 'An unexpected error occurred during password reset' } };
+      if (error) throw error;
+      toast({
+        title: 'Check your email',
+        description: 'We have sent you a link to reset your password.',
+      });
+    } catch (error: any) {
+      toast({
+        title: 'Error resetting password',
+        description: error.error_description || error.message,
+        variant: 'destructive',
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
-  const updatePassword = async (password: string) => {
+  const updateProfile = async (fullName: string, nickname: string) => {
     try {
-      console.log('Attempting to update password');
-      const { error } = await supabase.auth.updateUser({
-        password: password
-      });
-      
-      if (error) {
-        console.error('Password update error:', error);
-        return { error };
-      }
-      
-      console.log('Password updated successfully');
-      return { error: null };
-    } catch (err) {
-      console.error('Unexpected password update error:', err);
-      return { error: { message: 'An unexpected error occurred during password update' } };
+      const { data, error } = await supabase
+        .from('profiles')
+        .update({
+          full_name: fullName,
+          nickname: nickname,
+          updated_at: new Date().toISOString(),
+        })
+        .eq('id', user?.id)
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Update local user state
+      setUser(prev => prev ? {
+        ...prev,
+        full_name: fullName,
+        nickname: nickname
+      } : null);
+
+      return { data, error: null };
+    } catch (error: any) {
+      console.error('Profile update error:', error);
+      return { data: null, error };
     }
   };
 
-  const value = {
-    user,
-    loading,
-    signIn,
-    signUp,
-    signOut,
-    resetPassword,
-    updatePassword,
+  const deleteAccount = async () => {
+    try {
+      // Delete user profile first
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', user?.id);
+
+      if (profileError) throw profileError;
+
+      // Delete auth user (this will cascade and clean up everything)
+      const { error: authError } = await supabase.auth.admin.deleteUser(user?.id || '');
+      
+      if (authError) throw authError;
+
+      // Sign out locally
+      await signOut();
+      
+      return { error: null };
+    } catch (error: any) {
+      console.error('Account deletion error:', error);
+      return { error };
+    }
   };
 
-  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
+  return (
+    <AuthContext.Provider value={{ user, session, loading, signIn, signUp, signOut, resetPassword, updateProfile, deleteAccount }}>
+      {children}
+    </AuthContext.Provider>
+  );
 };
 
 export const useAuth = () => {
   const context = useContext(AuthContext);
+
   if (context === undefined) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
+
   return context;
 };

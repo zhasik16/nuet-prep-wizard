@@ -1,263 +1,207 @@
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Home, Clock, Target, ChevronRight, Lock, User, LogOut } from 'lucide-react';
-import { Button } from '@/components/ui/button';
+
+import { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/integrations/supabase/client';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
+import { BookOpen, Clock, Target, TrendingUp, User, Settings } from 'lucide-react';
+import AccountSettings from '@/components/AccountSettings';
 
 const Practice = () => {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
-  const [questionCounts, setQuestionCounts] = useState<{[key: string]: number}>({});
-  const [userProfile, setUserProfile] = useState<{nickname?: string; full_name?: string}>({});
+  const { user } = useAuth();
+  const [showAccountSettings, setShowAccountSettings] = useState(false);
 
-  useEffect(() => {
-    loadQuestionCounts();
-    if (user) {
-      loadUserProfile();
-    }
-  }, [user]);
-
-  const loadUserProfile = async () => {
-    if (!user) return;
-    
-    try {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single();
-
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading profile:', error);
-      } else if (data) {
-        setUserProfile(data);
-      }
-    } catch (error) {
-      console.error('Error loading profile:', error);
-    }
-  };
-
-  const loadQuestionCounts = async () => {
-    const testTypes = [
-      'NUET - Mathematics',
-      'NUET - Critical Thinking', 
-      'NUET - Reading Comprehension',
-      'NUET - English Language'
-    ];
-
-    const counts: {[key: string]: number} = {};
-    
-    for (const testType of testTypes) {
-      const { count } = await supabase
-        .from('questions')
-        .select('*', { count: 'exact', head: true })
-        .eq('test_type', testType);
-      
-      counts[testType] = count || 0;
-    }
-    
-    setQuestionCounts(counts);
-  };
-
-  const practiceTests = [
+  const practiceCategories = [
     {
-      id: 1,
-      type: 'NUET - Mathematics',
-      description: 'Algebra, Geometry, Statistics, and Problem Solving',
+      id: 'mathematics',
+      title: 'Mathematics',
+      description: 'Algebra, Calculus, Geometry, and Statistics',
       difficulty: 'Mixed',
-      color: 'bg-blue-500'
+      questions: 150,
+      estimatedTime: '45 min',
+      color: 'bg-blue-500',
     },
     {
-      id: 2,
-      type: 'NUET - Critical Thinking',
-      description: 'Logical Reasoning, Pattern Recognition, and Analysis',
-      difficulty: 'Mixed',
-      color: 'bg-purple-500'
+      id: 'physics',
+      title: 'Physics',
+      description: 'Mechanics, Thermodynamics, Electricity & Magnetism',
+      difficulty: 'Hard',
+      questions: 120,
+      estimatedTime: '40 min',
+      color: 'bg-purple-500',
     },
     {
-      id: 3,
-      type: 'NUET - Reading Comprehension',
-      description: 'Text Analysis, Vocabulary, and Reading Skills',
-      difficulty: 'Mixed',
-      color: 'bg-green-500'
+      id: 'chemistry',
+      title: 'Chemistry',
+      description: 'Organic, Inorganic, and Physical Chemistry',
+      difficulty: 'Medium',
+      questions: 100,
+      estimatedTime: '35 min',
+      color: 'bg-green-500',
     },
     {
-      id: 4,
-      type: 'NUET - English Language',
-      description: 'Grammar, Vocabulary, and Language Usage',
+      id: 'biology',
+      title: 'Biology',
+      description: 'Cell Biology, Genetics, Ecology, and Human Biology',
+      difficulty: 'Medium',
+      questions: 90,
+      estimatedTime: '30 min',
+      color: 'bg-orange-500',
+    },
+    {
+      id: 'english',
+      title: 'English',
+      description: 'Reading Comprehension, Grammar, and Vocabulary',
+      difficulty: 'Easy',
+      questions: 80,
+      estimatedTime: '25 min',
+      color: 'bg-red-500',
+    },
+    {
+      id: 'general-knowledge',
+      title: 'General Knowledge',
+      description: 'Current Affairs, History, Geography, and Science',
       difficulty: 'Mixed',
-      color: 'bg-orange-500'
-    }
+      questions: 200,
+      estimatedTime: '50 min',
+      color: 'bg-indigo-500',
+    },
   ];
 
-  const handleStartTest = (testId: number) => {
-    if (!user) {
-      navigate('/login');
-      return;
+  const getDifficultyColor = (difficulty: string) => {
+    switch (difficulty.toLowerCase()) {
+      case 'easy': return 'bg-green-100 text-green-800';
+      case 'medium': return 'bg-yellow-100 text-yellow-800';
+      case 'hard': return 'bg-red-100 text-red-800';
+      default: return 'bg-blue-100 text-blue-800';
     }
-    navigate(`/quiz/${testId}`);
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate('/');
+  const handleStartPractice = (categoryId: string) => {
+    navigate(`/quiz?category=${categoryId}&mode=practice`);
   };
-
-  const displayName = userProfile.nickname || userProfile.full_name || user?.user_metadata?.nickname || user?.email?.split('@')[0] || 'User';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
-      {/* Navigation */}
-      <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <Link to="/" className="flex items-center space-x-2">
-              <div className="w-8 h-8 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
-                <BookOpen className="w-5 h-5 text-white" />
-              </div>
-              <span className="text-xl font-bold bg-gradient-to-r from-blue-600 to-purple-600 bg-clip-text text-transparent">
-                NUET Prep
-              </span>
-            </Link>
-            
+      {/* Header */}
+      <div className="bg-white/80 backdrop-blur-md border-b border-gray-200">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          <div className="flex items-center justify-between">
             <div className="flex items-center space-x-4">
-              {!user ? (
-                <Link to="/login">
-                  <Button>Sign In</Button>
-                </Link>
-              ) : (
-                <div className="flex items-center space-x-4">
-                  <div className="flex items-center space-x-2">
-                    <User className="w-4 h-4 text-gray-600" />
-                    <span className="text-sm text-gray-600">{displayName}</span>
-                  </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm"
-                    onClick={handleSignOut}
-                  >
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
-                  </Button>
+              <div className="w-12 h-12 bg-gradient-to-r from-blue-600 to-purple-600 rounded-lg flex items-center justify-center">
+                <BookOpen className="w-6 h-6 text-white" />
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-gray-900">Practice Mode</h1>
+                <p className="text-gray-600">Choose a subject to start practicing</p>
+              </div>
+            </div>
+            
+            {user && (
+              <div className="flex items-center gap-4">
+                <div className="text-right">
+                  <p className="text-sm text-gray-600">Welcome back,</p>
+                  <p className="font-semibold text-gray-900">{user.full_name || user.email}</p>
                 </div>
-              )}
-              <Link to="/">
-                <Button variant="outline" size="sm">
-                  <Home className="w-4 h-4 mr-2" />
-                  Home
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setShowAccountSettings(true)}
+                  className="flex items-center gap-2"
+                >
+                  <Settings className="w-4 h-4" />
+                  Account
                 </Button>
-              </Link>
-            </div>
-          </div>
-        </div>
-      </nav>
-
-      <div className="max-w-6xl mx-auto px-4 py-12">
-        {/* Header */}
-        <div className="text-center mb-12">
-          <h1 className="text-4xl font-bold text-gray-900 mb-4">
-            NUET Practice Tests
-          </h1>
-          <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Master the Nazarbayev University Entrance Test with our comprehensive practice tests. 
-            Each test contains carefully crafted questions designed to simulate the real exam experience.
-          </p>
-        </div>
-
-        {/* Practice Tests Grid */}
-        <div className="grid md:grid-cols-2 gap-6 mb-12">
-          {practiceTests.map((test, index) => (
-            <div key={test.id} className="bg-white rounded-2xl shadow-xl p-6 hover:shadow-2xl transition-shadow">
-              <div className="flex items-start justify-between mb-4">
-                <div className={`w-12 h-12 ${test.color} rounded-lg flex items-center justify-center`}>
-                  <Target className="w-6 h-6 text-white" />
-                </div>
-                <span className="bg-gray-100 text-gray-600 px-3 py-1 rounded-full text-sm font-medium">
-                  #{index + 1}
-                </span>
               </div>
-              
-              <h3 className="text-xl font-bold text-gray-900 mb-2">
-                {test.type}
-              </h3>
-              <p className="text-gray-600 mb-4">
-                {test.description}
-              </p>
-              
-              <div className="flex items-center space-x-4 mb-6 text-sm text-gray-500">
-                <div className="flex items-center">
-                  <Clock className="w-4 h-4 mr-1" />
-                  Untimed
-                </div>
-                <div className="flex items-center">
-                  <Target className="w-4 h-4 mr-1" />
-                  {questionCounts[test.type] || 0} Questions
-                </div>
-                <div>
-                  {test.difficulty}
-                </div>
-              </div>
-
-              <Button 
-                onClick={() => handleStartTest(test.id)}
-                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white"
-                disabled={!questionCounts[test.type]}
-              >
-                {!user ? (
-                  <>
-                    <Lock className="w-4 h-4 mr-2" />
-                    Sign In to Start
-                  </>
-                ) : !questionCounts[test.type] ? (
-                  'Loading...'
-                ) : (
-                  <>
-                    Start Practice Test
-                    <ChevronRight className="w-4 h-4 ml-2" />
-                  </>
-                )}
-              </Button>
-            </div>
-          ))}
-        </div>
-
-        {/* Features Section */}
-        <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6 text-center">
-            Why Choose Our Practice Tests?
-          </h2>
-          <div className="grid md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <div className="w-16 h-16 bg-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Target className="w-8 h-8 text-blue-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Real NUET Format</h3>
-              <p className="text-gray-600 text-sm">
-                Questions designed to match the actual NUET exam structure and difficulty
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <BookOpen className="w-8 h-8 text-green-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Detailed Explanations</h3>
-              <p className="text-gray-600 text-sm">
-                Every question comes with comprehensive explanations to help you learn
-              </p>
-            </div>
-            <div className="text-center">
-              <div className="w-16 h-16 bg-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                <Clock className="w-8 h-8 text-purple-600" />
-              </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Progress Tracking</h3>
-              <p className="text-gray-600 text-sm">
-                Monitor your performance and identify areas for improvement
-              </p>
-            </div>
+            )}
           </div>
         </div>
       </div>
+
+      {/* Practice Categories */}
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
+          {practiceCategories.map((category) => (
+            <Card key={category.id} className="hover:shadow-lg transition-all duration-300 hover:scale-105">
+              <CardHeader className="pb-4">
+                <div className="flex items-center justify-between">
+                  <div className={`w-12 h-12 ${category.color} rounded-lg flex items-center justify-center`}>
+                    <Target className="w-6 h-6 text-white" />
+                  </div>
+                  <Badge className={getDifficultyColor(category.difficulty)}>
+                    {category.difficulty}
+                  </Badge>
+                </div>
+                <CardTitle className="text-xl font-bold text-gray-900">
+                  {category.title}
+                </CardTitle>
+                <CardDescription className="text-gray-600">
+                  {category.description}
+                </CardDescription>
+              </CardHeader>
+              
+              <CardContent className="space-y-4">
+                <div className="flex items-center justify-between text-sm text-gray-600">
+                  <div className="flex items-center gap-1">
+                    <BookOpen className="w-4 h-4" />
+                    <span>{category.questions} Questions</span>
+                  </div>
+                  <div className="flex items-center gap-1">
+                    <Clock className="w-4 h-4" />
+                    <span>{category.estimatedTime}</span>
+                  </div>
+                </div>
+                
+                <Button 
+                  className="w-full" 
+                  onClick={() => handleStartPractice(category.id)}
+                >
+                  Start Practice
+                </Button>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+
+        {/* Performance Summary for logged-in users */}
+        {user && (
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <TrendingUp className="w-5 h-5" />
+                Your Practice Summary
+              </CardTitle>
+              <CardDescription>
+                Track your progress across different subjects
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="grid md:grid-cols-3 gap-6">
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-blue-600">127</div>
+                  <div className="text-sm text-gray-600">Questions Answered</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-green-600">78%</div>
+                  <div className="text-sm text-gray-600">Average Score</div>
+                </div>
+                <div className="text-center">
+                  <div className="text-2xl font-bold text-purple-600">12h 30m</div>
+                  <div className="text-sm text-gray-600">Total Study Time</div>
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+        )}
+      </div>
+
+      {/* Account Settings Modal */}
+      <AccountSettings 
+        isOpen={showAccountSettings}
+        onClose={() => setShowAccountSettings(false)}
+      />
     </div>
   );
 };
