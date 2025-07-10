@@ -1,16 +1,16 @@
 
 import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Clock, Target, TrendingUp, Settings } from 'lucide-react';
+import { BookOpen, Clock, Target, TrendingUp, Settings, Home, LogIn, User, LogOut } from 'lucide-react';
 import AccountSettings from '@/components/AccountSettings';
 
 const Practice = () => {
   const navigate = useNavigate();
-  const { user, userProfile } = useAuth();
+  const { user, userProfile, signOut } = useAuth();
   const [showAccountSettings, setShowAccountSettings] = useState(false);
 
   // NUET Test Categories
@@ -50,6 +50,11 @@ const Practice = () => {
     navigate(`/quiz/${testId}`);
   };
 
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/');
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
       {/* Header */}
@@ -66,25 +71,52 @@ const Practice = () => {
               </div>
             </div>
             
-            {user && (
-              <div className="flex items-center gap-4">
-                <div className="text-right">
-                  <p className="text-sm text-gray-600">Welcome back,</p>
-                  <p className="font-semibold text-gray-900">
-                    {userProfile?.full_name || userProfile?.nickname || user.email}
-                  </p>
-                </div>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setShowAccountSettings(true)}
-                  className="flex items-center gap-2"
-                >
-                  <Settings className="w-4 h-4" />
-                  Account
+            <div className="flex items-center gap-4">
+              <Link to="/">
+                <Button variant="outline" size="sm">
+                  <Home className="w-4 h-4 mr-2" />
+                  Home
                 </Button>
-              </div>
-            )}
+              </Link>
+              
+              {user ? (
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-sm text-gray-600">Welcome back,</p>
+                    <p className="font-semibold text-gray-900">
+                      {userProfile?.full_name || userProfile?.nickname || user.email}
+                    </p>
+                  </div>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setShowAccountSettings(true)}
+                      className="flex items-center gap-2"
+                    >
+                      <Settings className="w-4 h-4" />
+                      Account
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSignOut}
+                      className="flex items-center gap-2"
+                    >
+                      <LogOut className="w-4 h-4" />
+                      Sign Out
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+                <Link to="/login">
+                  <Button size="sm">
+                    <LogIn className="w-4 h-4 mr-2" />
+                    Login
+                  </Button>
+                </Link>
+              )}
+            </div>
           </div>
         </div>
       </div>

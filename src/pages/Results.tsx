@@ -3,7 +3,9 @@ import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { BookOpen, Home, CheckCircle, XCircle, Clock, Target, RotateCcw, Eye, EyeOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { ChartContainer, ChartTooltip, ChartTooltipContent } from '@/components/ui/chart';
+import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 
 const Results = () => {
   const navigate = useNavigate();
@@ -31,6 +33,46 @@ const Results = () => {
   const unanswered = Object.keys(results.answers).length < results.totalQuestions 
     ? results.totalQuestions - Object.keys(results.answers).length 
     : 0;
+
+  // Chart data
+  const scoreData = [
+    { name: 'Correct', value: correctAnswers, color: '#10b981' },
+    { name: 'Incorrect', value: wrongAnswers, color: '#ef4444' },
+    { name: 'Unanswered', value: unanswered, color: '#6b7280' }
+  ];
+
+  const performanceData = [
+    { category: 'Score', value: results.score, target: 80 },
+    { category: 'Time Efficiency', value: Math.max(0, 100 - (results.timeElapsed / 3600) * 100), target: 75 },
+    { category: 'Completion Rate', value: ((results.totalQuestions - unanswered) / results.totalQuestions) * 100, target: 100 }
+  ];
+
+  const subjectBreakdown = results.questions.reduce((acc: any, question: any, index: number) => {
+    const subject = question.subject;
+    if (!acc[subject]) {
+      acc[subject] = { correct: 0, total: 0 };
+    }
+    acc[subject].total++;
+    if (results.answers[index] === question.correct) {
+      acc[subject].correct++;
+    }
+    return acc;
+  }, {});
+
+  const subjectData = Object.entries(subjectBreakdown).map(([subject, data]: [string, any]) => ({
+    subject,
+    percentage: Math.round((data.correct / data.total) * 100),
+    correct: data.correct,
+    total: data.total
+  }));
+
+  const chartConfig = {
+    correct: { label: 'Correct', color: '#10b981' },
+    incorrect: { label: 'Incorrect', color: '#ef4444' },
+    unanswered: { label: 'Unanswered', color: '#6b7280' },
+    score: { label: 'Score', color: '#3b82f6' },
+    target: { label: 'Target', color: '#94a3b8' }
+  };
 
   const toggleExplanation = (questionIndex: number) => {
     setShowExplanations(prev => ({
@@ -129,6 +171,87 @@ const Results = () => {
             </Link>
           </div>
         </div>
+
+        {/* Performance Charts */}
+        <div className="grid md:grid-cols-2 gap-8 mb-8">
+          {/* Score Distribution Pie Chart */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Score Distribution</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <PieChart>
+                    <Pie
+                      data={scoreData}
+                      cx="50%"
+                      cy="50%"
+                      innerRadius={60}
+                      outerRadius={100}
+                      paddingAngle={2}
+                      dataKey="value"
+                    >
+                      {scoreData.map((entry, index) => (
+                        <Cell key={`cell-${index}`} fill={entry.color} />
+                      ))}
+                    </Pie>
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </PieChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+              <div className="flex justify-center mt-4 gap-4">
+                {scoreData.map((item, index) => (
+                  <div key={index} className="flex items-center gap-2">
+                    <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }}></div>
+                    <span className="text-sm">{item.name}: {item.value}</span>
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Performance Metrics */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Performance Metrics</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={performanceData}>
+                    <XAxis dataKey="category" />
+                    <YAxis />
+                    <Bar dataKey="value" fill="#3b82f6" />
+                    <Bar dataKey="target" fill="#94a3b8" opacity={0.3} />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Subject Breakdown */}
+        {subjectData.length > 0 && (
+          <Card className="mb-8">
+            <CardHeader>
+              <CardTitle>Subject Performance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <ChartContainer config={chartConfig} className="h-64">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={subjectData}>
+                    <XAxis dataKey="subject" />
+                    <YAxis />
+                    <Bar dataKey="percentage" fill="#10b981" />
+                    <ChartTooltip content={<ChartTooltipContent />} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartContainer>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Performance Feedback */}
         <div className="bg-white rounded-2xl shadow-xl p-8 mb-8">
