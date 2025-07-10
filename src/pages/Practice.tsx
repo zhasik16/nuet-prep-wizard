@@ -72,12 +72,15 @@ const Practice = () => {
             </div>
             
             <div className="flex items-center gap-4">
-              <Link to="/">
-                <Button variant="outline" size="sm">
-                  <Home className="w-4 h-4 mr-2" />
-                  Home
-                </Button>
-              </Link>
+              {/* Only show Home button if user is not authenticated */}
+              {!user && (
+                <Link to="/">
+                  <Button variant="outline" size="sm">
+                    <Home className="w-4 h-4 mr-2" />
+                    Home
+                  </Button>
+                </Link>
+              )}
               
               {user ? (
                 <div className="flex items-center gap-4">
