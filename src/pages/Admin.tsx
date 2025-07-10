@@ -46,8 +46,8 @@ const Admin = () => {
   const [questionImage, setQuestionImage] = useState<File | null>(null);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
-  // Check if user is admin - check both email and if user is logged in
-  const isAdmin = user && user.email === 'zhasco10@gmail.com';
+  // Check if user is admin
+  const isAdmin = user?.email === 'zhasco10@gmail.com';
 
   useEffect(() => {
     if (isAdmin) {
@@ -162,15 +162,11 @@ const Admin = () => {
     }
   };
 
-  // If user is not logged in, redirect to login
   if (!user) {
-    console.log('No user found, redirecting to login');
     return <Navigate to="/login" replace />;
   }
 
-  // If user is logged in but not admin, show access denied
   if (!isAdmin) {
-    console.log('User is not admin:', user.email);
     return (
       <div className="min-h-screen flex items-center justify-center bg-gray-50">
         <Card className="w-96">
@@ -181,16 +177,11 @@ const Admin = () => {
             <p className="text-center text-gray-600">
               You don't have permission to access the admin panel.
             </p>
-            <p className="text-center text-sm text-gray-500 mt-2">
-              Current user: {user.email}
-            </p>
           </CardContent>
         </Card>
       </div>
     );
   }
-
-  console.log('Admin access granted for:', user.email);
 
   return (
     <div className="min-h-screen bg-gray-50">
