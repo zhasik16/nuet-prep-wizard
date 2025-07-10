@@ -61,18 +61,22 @@ export const AuthProvider: React.FC<Props> = ({ supabase, children }) => {
 
     getSession();
 
-    supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event: AuthChangeEvent, session: Session | null) => {
       setSession(session);
       setUser(session?.user || null);
       
       if (session?.user) {
-        await fetchUserProfile(session.user.id);
+        setTimeout(() => {
+          fetchUserProfile(session.user.id);
+        }, 0);
       } else {
         setUserProfile(null);
       }
       
       setLoading(false);
     });
+
+    return () => subscription.unsubscribe();
   }, [supabase]);
 
   const fetchUserProfile = async (userId: string) => {
@@ -97,6 +101,17 @@ export const AuthProvider: React.FC<Props> = ({ supabase, children }) => {
   const signIn = async (email: string, password: string) => {
     setLoading(true);
     try {
+      // Check if user already exists
+      const { data: existingUser, error: userError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .single();
+
+      if (userError && userError.code !== 'PGRST116') {
+        return { error: userError };
+      }
+
       const { data, error } = await supabase.auth.signInWithPassword({
         email,
         password,
@@ -117,6 +132,17 @@ export const AuthProvider: React.FC<Props> = ({ supabase, children }) => {
   const signUp = async (email: string, password: string, fullName: string, nickname: string) => {
     setLoading(true);
     try {
+      // Check if email already exists
+      const { data: existingUser, error: checkError } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('email', email)
+        .single();
+
+      if (existingUser) {
+        return { error: { message: 'An account with this email already exists' } };
+      }
+
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -218,11 +244,6 @@ export const AuthProvider: React.FC<Props> = ({ supabase, children }) => {
         .eq('id', user?.id);
 
       if (profileError) throw profileError;
-
-      // Delete auth user (this will cascade and clean up everything)
-      const { error: authError } = await supabase.auth.admin.deleteUser(user?.id || '');
-      
-      if (authError) throw authError;
 
       // Sign out locally
       await signOut();

@@ -1,10 +1,11 @@
+
 import { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BookOpen, Clock, Target, TrendingUp, User, Settings } from 'lucide-react';
+import { BookOpen, Clock, Target, TrendingUp, Settings } from 'lucide-react';
 import AccountSettings from '@/components/AccountSettings';
 
 const Practice = () => {
@@ -12,61 +13,28 @@ const Practice = () => {
   const { user, userProfile } = useAuth();
   const [showAccountSettings, setShowAccountSettings] = useState(false);
 
-  const practiceCategories = [
+  // NUET Test Categories
+  const nuetTests = [
     {
-      id: 'mathematics',
+      id: '1',
       title: 'Mathematics',
-      description: 'Algebra, Calculus, Geometry, and Statistics',
-      difficulty: 'Mixed',
-      questions: 150,
-      estimatedTime: '45 min',
-      color: 'bg-blue-500',
-    },
-    {
-      id: 'physics',
-      title: 'Physics',
-      description: 'Mechanics, Thermodynamics, Electricity & Magnetism',
+      description: 'Numbers, Algebra, Measures, Geometry, Statistics',
       difficulty: 'Hard',
-      questions: 120,
-      estimatedTime: '40 min',
+      questions: 30,
+      estimatedTime: '60 min',
+      color: 'bg-blue-500',
+      topics: ['Pure Mathematics', 'Algebra', 'Geometry', 'Statistics', 'Measures']
+    },
+    {
+      id: '2', 
+      title: 'Critical Thinking',
+      description: 'Problem Solving, Reasoning, Logic Analysis',
+      difficulty: 'Hard',
+      questions: 30,
+      estimatedTime: '60 min',
       color: 'bg-purple-500',
-    },
-    {
-      id: 'chemistry',
-      title: 'Chemistry',
-      description: 'Organic, Inorganic, and Physical Chemistry',
-      difficulty: 'Medium',
-      questions: 100,
-      estimatedTime: '35 min',
-      color: 'bg-green-500',
-    },
-    {
-      id: 'biology',
-      title: 'Biology',
-      description: 'Cell Biology, Genetics, Ecology, and Human Biology',
-      difficulty: 'Medium',
-      questions: 90,
-      estimatedTime: '30 min',
-      color: 'bg-orange-500',
-    },
-    {
-      id: 'english',
-      title: 'English',
-      description: 'Reading Comprehension, Grammar, and Vocabulary',
-      difficulty: 'Easy',
-      questions: 80,
-      estimatedTime: '25 min',
-      color: 'bg-red-500',
-    },
-    {
-      id: 'general-knowledge',
-      title: 'General Knowledge',
-      description: 'Current Affairs, History, Geography, and Science',
-      difficulty: 'Mixed',
-      questions: 200,
-      estimatedTime: '50 min',
-      color: 'bg-indigo-500',
-    },
+      topics: ['Problem Solving', 'Finding Procedures', 'Identifying Similarity', 'Drawing Conclusions', 'Reasoning Errors']
+    }
   ];
 
   const getDifficultyColor = (difficulty: string) => {
@@ -78,8 +46,8 @@ const Practice = () => {
     }
   };
 
-  const handleStartPractice = (categoryId: string) => {
-    navigate(`/quiz?category=${categoryId}&mode=practice`);
+  const handleStartTest = (testId: string) => {
+    navigate(`/quiz/${testId}`);
   };
 
   return (
@@ -93,8 +61,8 @@ const Practice = () => {
                 <BookOpen className="w-6 h-6 text-white" />
               </div>
               <div>
-                <h1 className="text-2xl font-bold text-gray-900">Practice Mode</h1>
-                <p className="text-gray-600">Choose a subject to start practicing</p>
+                <h1 className="text-2xl font-bold text-gray-900">NUET Practice Mode</h1>
+                <p className="text-gray-600">Nazarbayev University Entrance Test Preparation</p>
               </div>
             </div>
             
@@ -121,25 +89,30 @@ const Practice = () => {
         </div>
       </div>
 
-      {/* Practice Categories */}
+      {/* NUET Test Sections */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {practiceCategories.map((category) => (
-            <Card key={category.id} className="hover:shadow-lg transition-all duration-300 hover:scale-105">
+        <div className="mb-8">
+          <h2 className="text-xl font-bold text-gray-900 mb-2">NUET Test Sections</h2>
+          <p className="text-gray-600">Choose a section to start practicing for the Nazarbayev University Entrance Test</p>
+        </div>
+
+        <div className="grid md:grid-cols-2 gap-8 mb-8">
+          {nuetTests.map((test) => (
+            <Card key={test.id} className="hover:shadow-lg transition-all duration-300 hover:scale-105">
               <CardHeader className="pb-4">
-                <div className="flex items-center justify-between">
-                  <div className={`w-12 h-12 ${category.color} rounded-lg flex items-center justify-center`}>
+                <div className="flex items-center justify-between mb-4">
+                  <div className={`w-12 h-12 ${test.color} rounded-lg flex items-center justify-center`}>
                     <Target className="w-6 h-6 text-white" />
                   </div>
-                  <Badge className={getDifficultyColor(category.difficulty)}>
-                    {category.difficulty}
+                  <Badge className={getDifficultyColor(test.difficulty)}>
+                    {test.difficulty}
                   </Badge>
                 </div>
                 <CardTitle className="text-xl font-bold text-gray-900">
-                  {category.title}
+                  {test.title}
                 </CardTitle>
                 <CardDescription className="text-gray-600">
-                  {category.description}
+                  {test.description}
                 </CardDescription>
               </CardHeader>
               
@@ -147,19 +120,30 @@ const Practice = () => {
                 <div className="flex items-center justify-between text-sm text-gray-600">
                   <div className="flex items-center gap-1">
                     <BookOpen className="w-4 h-4" />
-                    <span>{category.questions} Questions</span>
+                    <span>{test.questions} Questions</span>
                   </div>
                   <div className="flex items-center gap-1">
                     <Clock className="w-4 h-4" />
-                    <span>{category.estimatedTime}</span>
+                    <span>{test.estimatedTime}</span>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <p className="text-sm font-medium text-gray-700">Topics covered:</p>
+                  <div className="flex flex-wrap gap-1">
+                    {test.topics.map((topic, index) => (
+                      <Badge key={index} variant="secondary" className="text-xs">
+                        {topic}
+                      </Badge>
+                    ))}
                   </div>
                 </div>
                 
                 <Button 
                   className="w-full" 
-                  onClick={() => handleStartPractice(category.id)}
+                  onClick={() => handleStartTest(test.id)}
                 >
-                  Start Practice
+                  Start {test.title} Test
                 </Button>
               </CardContent>
             </Card>
@@ -168,28 +152,28 @@ const Practice = () => {
 
         {/* Performance Summary for logged-in users */}
         {user && (
-          <Card className="mt-8">
+          <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="w-5 h-5" />
-                Your Practice Summary
+                Your NUET Practice Progress
               </CardTitle>
               <CardDescription>
-                Track your progress across different subjects
+                Track your performance across Mathematics and Critical Thinking sections
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="grid md:grid-cols-3 gap-6">
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">127</div>
-                  <div className="text-sm text-gray-600">Questions Answered</div>
+                  <div className="text-2xl font-bold text-blue-600">60</div>
+                  <div className="text-sm text-gray-600">Questions Completed</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-green-600">78%</div>
+                  <div className="text-2xl font-bold text-green-600">75%</div>
                   <div className="text-sm text-gray-600">Average Score</div>
                 </div>
                 <div className="text-center">
-                  <div className="text-2xl font-bold text-purple-600">12h 30m</div>
+                  <div className="text-2xl font-bold text-purple-600">8h 15m</div>
                   <div className="text-sm text-gray-600">Total Study Time</div>
                 </div>
               </div>

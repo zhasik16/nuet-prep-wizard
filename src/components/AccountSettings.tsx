@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { User, Mail, Edit3, Trash2, Shield, Save } from 'lucide-react';
+import { User, Mail, Edit3, Trash2, Shield, Save, LogOut } from 'lucide-react';
 
 interface AccountSettingsProps {
   isOpen: boolean;
@@ -34,6 +34,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ isOpen, onClose }) =>
   const { toast } = useToast();
   const [isEditing, setIsEditing] = useState(false);
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteConfirmText, setDeleteConfirmText] = useState('');
   const [formData, setFormData] = useState({
     fullName: userProfile?.full_name || '',
     nickname: userProfile?.nickname || '',
@@ -72,6 +73,15 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ isOpen, onClose }) =>
   };
 
   const handleDeleteAccount = async () => {
+    if (deleteConfirmText.toLowerCase() !== 'delete') {
+      toast({
+        title: "Error",
+        description: "Please type 'delete' to confirm account deletion",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setLoading(true);
     try {
       const { error } = await deleteAccount();
@@ -82,6 +92,8 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ isOpen, onClose }) =>
         description: "Your account has been permanently deleted",
       });
       onClose();
+      // Redirect to home page
+      window.location.href = '/';
     } catch (error: any) {
       toast({
         title: "Error",
@@ -91,6 +103,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ isOpen, onClose }) =>
     } finally {
       setLoading(false);
       setShowDeleteConfirm(false);
+      setDeleteConfirmText('');
     }
   };
 
@@ -102,6 +115,8 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ isOpen, onClose }) =>
         title: "Signed Out",
         description: "You have been successfully signed out",
       });
+      // Redirect to home page
+      window.location.href = '/';
     } catch (error: any) {
       toast({
         title: "Error",
@@ -220,6 +235,7 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ isOpen, onClose }) =>
                   variant="outline"
                   className="justify-start"
                 >
+                  <LogOut className="w-4 h-4 mr-2" />
                   Sign Out
                 </Button>
                 
@@ -242,16 +258,29 @@ const AccountSettings: React.FC<AccountSettingsProps> = ({ isOpen, onClose }) =>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete your account
-              and remove all your data from our servers.
+            <AlertDialogDescription className="space-y-4">
+              <p>This action cannot be undone. This will permanently delete your account and remove all your data from our servers.</p>
+              <div className="space-y-2">
+                <Label htmlFor="deleteConfirm">Type "delete" to confirm:</Label>
+                <Input
+                  id="deleteConfirm"
+                  value={deleteConfirmText}
+                  onChange={(e) => setDeleteConfirmText(e.target.value)}
+                  placeholder="Type 'delete' here"
+                />
+              </div>
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogCancel onClick={() => {
+              setDeleteConfirmText('');
+              setShowDeleteConfirm(false);
+            }}>
+              Cancel
+            </AlertDialogCancel>
             <AlertDialogAction
               onClick={handleDeleteAccount}
-              disabled={loading}
+              disabled={loading || deleteConfirmText.toLowerCase() !== 'delete'}
               className="bg-red-600 hover:bg-red-700"
             >
               {loading ? "Deleting..." : "Delete Account"}
