@@ -242,7 +242,7 @@ export const AuthProvider: React.FC<Props> = ({ supabase, children }) => {
       }
 
       // Call the Edge Function to delete the account
-      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/delete-user`, {
+      const response = await fetch('https://zhyscghkxsjwsczhviwg.supabase.co/functions/v1/delete-user', {
         method: 'POST',
         headers: {
           'Authorization': `Bearer ${session.access_token}`,
