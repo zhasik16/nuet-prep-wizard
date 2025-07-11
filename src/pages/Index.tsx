@@ -1,4 +1,3 @@
-
 import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '@/hooks/useAuth';
@@ -34,6 +33,15 @@ const Index = () => {
                   <span className="text-sm text-gray-700">
                     Welcome, {userProfile?.nickname || userProfile?.full_name || user.email}
                   </span>
+                  {user.email === 'zhasco10@gmail.com' && (
+                    <Link
+                      to="/admin"
+                      className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center gap-2"
+                    >
+                      <Settings className="w-4 h-4" />
+                      Admin Panel
+                    </Link>
+                  )}
                   <Link
                     to="/profile"
                     className="text-gray-700 hover:text-blue-600 transition-colors"
