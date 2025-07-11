@@ -237,17 +237,30 @@ export const AuthProvider: React.FC<Props> = ({ supabase, children }) => {
 
   const deleteAccount = async () => {
     try {
-      // Delete user profile first
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', user?.id);
+      if (!session?.access_token) {
+        return { error: { message: 'No active session' } };
+      }
 
-      if (profileError) throw profileError;
+      // Call the Edge Function to delete the account
+      const response = await fetch(`${supabase.supabaseUrl}/functions/v1/delete-user`, {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${session.access_token}`,
+          'Content-Type': 'application/json',
+        },
+      });
 
-      // Sign out locally
-      await signOut();
-      
+      const result = await response.json();
+
+      if (!response.ok) {
+        throw new Error(result.error || 'Failed to delete account');
+      }
+
+      // Clear local state
+      setUser(null);
+      setUserProfile(null);
+      setSession(null);
+
       return { error: null };
     } catch (error: any) {
       console.error('Account deletion error:', error);
