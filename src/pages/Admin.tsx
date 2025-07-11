@@ -1,6 +1,7 @@
+
 import { useState, useEffect } from 'react';
 import { useAuth } from '@/hooks/useAuth';
-import { Navigate, Link } from 'react-router-dom';
+import { Navigate } from 'react-router-dom';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,12 +28,6 @@ import {
 const Admin = () => {
   const { user } = useAuth();
   const { toast } = useToast();
-  
-  // Add debugging
-  console.log('Admin page - Current user:', user);
-  console.log('Admin page - User email:', user?.email);
-  console.log('Admin page - Is admin?', user?.email === 'zhasco10@gmail.com');
-  
   const [userCount, setUserCount] = useState(0);
   const [questionCount, setQuestionCount] = useState(0);
   const [loading, setLoading] = useState(false);
@@ -179,20 +174,9 @@ const Admin = () => {
             <CardTitle className="text-center text-red-600">Access Denied</CardTitle>
           </CardHeader>
           <CardContent>
-            <p className="text-center text-gray-600 mb-4">
+            <p className="text-center text-gray-600">
               You don't have permission to access the admin panel.
             </p>
-            <p className="text-center text-sm text-gray-500">
-              Current user: {user.email}
-            </p>
-            <p className="text-center text-sm text-gray-500">
-              Required: zhasco10@gmail.com
-            </p>
-            <div className="mt-4 text-center">
-              <Link to="/" className="text-blue-600 hover:text-blue-800">
-                Go back to home
-              </Link>
-            </div>
           </CardContent>
         </Card>
       </div>
