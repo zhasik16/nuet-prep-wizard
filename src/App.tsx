@@ -18,6 +18,7 @@ import StudyGuides from "./pages/StudyGuides";
 import FAQ from "./pages/FAQ";
 import Contact from "./pages/Contact";
 import Admin from "./pages/Admin";
+import AuthCallback from "./pages/AuthCallback";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -42,6 +43,7 @@ const App = () => (
             <Route path="/faq" element={<FAQ />} />
             <Route path="/contact" element={<Contact />} />
             <Route path="/admin" element={<Admin />} />
+            <Route path="/auth/callback" element={<AuthCallback />} />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>
