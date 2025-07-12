@@ -83,7 +83,7 @@ const Donate = () => {
             <div className="space-y-6">
               <div className="text-center p-6 bg-gradient-to-r from-blue-50 to-purple-50 rounded-lg">
                 <h4 className="font-semibold text-gray-900 mb-2">Kaspi Number</h4>
-                <p className="text-2xl font-bold text-blue-600">+7 707 707 0707</p>
+                <p className="text-2xl font-bold text-blue-600">+7 708 915 0504</p>
                 <p className="text-sm text-gray-600 mt-2">Send any amount via Kaspi transfer</p>
               </div>
 
