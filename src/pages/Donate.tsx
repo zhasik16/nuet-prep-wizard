@@ -216,7 +216,7 @@ const Donate = () => {
             <div>
               <h3 className="font-semibold mb-4">Platform</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><Link to="/quiz" className="hover:text-white transition-colors">Practice Tests</Link></li>
+                <li><Link to="/practice" className="hover:text-white transition-colors">Practice Tests</Link></li>
                 <li><Link to="/about" className="hover:text-white transition-colors">About</Link></li>
                 <li><Link to="/donate" className="hover:text-white transition-colors">Support Us</Link></li>
               </ul>
@@ -225,9 +225,9 @@ const Donate = () => {
             <div>
               <h3 className="font-semibold mb-4">Resources</h3>
               <ul className="space-y-2 text-gray-400">
-                <li><a href="#" className="hover:text-white transition-colors">Study Guides</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">FAQ</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Contact</a></li>
+                <li><Link to="/study-guides" className="hover:text-white transition-colors">Study Guides</Link></li>
+                <li><Link to="/faq" className="hover:text-white transition-colors">FAQ</Link></li>
+                <li><Link to="/contact" className="hover:text-white transition-colors">Contact</Link></li>
               </ul>
             </div>
             
@@ -235,8 +235,8 @@ const Donate = () => {
               <h3 className="font-semibold mb-4">About NU</h3>
               <ul className="space-y-2 text-gray-400">
                 <li><a href="https://nu.edu.kz" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Official Website</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Admission Info</a></li>
-                <li><a href="#" className="hover:text-white transition-colors">Programs</a></li>
+                <li><a href="https://nu.edu.kz/admissions" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Admission Info</a></li>
+                <li><a href="https://nu.edu.kz/academics" target="_blank" rel="noopener noreferrer" className="hover:text-white transition-colors">Programs</a></li>
               </ul>
             </div>
           </div>
