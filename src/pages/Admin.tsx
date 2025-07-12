@@ -112,22 +112,29 @@ const Admin = () => {
 
   const fetchStats = async () => {
     try {
-      // Get user count from auth.users using RPC or count from profiles table
-      const { data: profilesData, error: profilesError } = await supabase
-        .from('profiles')
-        .select('id');
+      // Get actual registered users count from auth system
+      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
       
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
-        // Fallback: try to get a rough count from quiz_attempts user_ids
-        const { data: attemptsData } = await supabase
-          .from('quiz_attempts')
-          .select('user_id');
+      if (authError) {
+        console.error('Error fetching auth users:', authError);
+        // Fallback: try to get count from profiles table
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('id');
         
-        const uniqueUsers = new Set(attemptsData?.map(attempt => attempt.user_id).filter(Boolean));
-        setUserCount(uniqueUsers.size);
+        if (!profilesError && profilesData) {
+          setUserCount(profilesData.length);
+        } else {
+          // Second fallback: get unique user IDs from quiz attempts
+          const { data: attemptsData } = await supabase
+            .from('quiz_attempts')
+            .select('user_id');
+          
+          const uniqueUsers = new Set(attemptsData?.map(attempt => attempt.user_id).filter(Boolean));
+          setUserCount(uniqueUsers.size);
+        }
       } else {
-        setUserCount(profilesData?.length || 0);
+        setUserCount(authUsers.users?.length || 0);
       }
       
       // Get question count
@@ -138,6 +145,16 @@ const Admin = () => {
       setQuestionCount(questionCount || 0);
     } catch (error) {
       console.error('Error fetching stats:', error);
+      // Final fallback: try profiles table count
+      try {
+        const { data: profilesData } = await supabase
+          .from('profiles')
+          .select('id');
+        setUserCount(profilesData?.length || 0);
+      } catch (fallbackError) {
+        console.error('Fallback error:', fallbackError);
+        setUserCount(0);
+      }
     }
   };
 
