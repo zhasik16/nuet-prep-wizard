@@ -80,6 +80,10 @@ const Admin = () => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterTestType, setFilterTestType] = useState('all');
 
+  // Edit question image state
+  const [editQuestionImage, setEditQuestionImage] = useState<File | null>(null);
+  const [editImagePreview, setEditImagePreview] = useState<string | null>(null);
+
   useEffect(() => {
     if (isAuthenticated) {
       fetchStats();
@@ -108,17 +112,29 @@ const Admin = () => {
 
   const fetchStats = async () => {
     try {
-      // Get user count
-      const { count: userCount } = await supabase
+      // Get user count from auth.users using RPC or count from profiles table
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
-        .select('*', { count: 'exact', head: true });
+        .select('id');
+      
+      if (profilesError) {
+        console.error('Error fetching profiles:', profilesError);
+        // Fallback: try to get a rough count from quiz_attempts user_ids
+        const { data: attemptsData } = await supabase
+          .from('quiz_attempts')
+          .select('user_id');
+        
+        const uniqueUsers = new Set(attemptsData?.map(attempt => attempt.user_id).filter(Boolean));
+        setUserCount(uniqueUsers.size);
+      } else {
+        setUserCount(profilesData?.length || 0);
+      }
       
       // Get question count
       const { count: questionCount } = await supabase
         .from('questions')
         .select('*', { count: 'exact', head: true });
       
-      setUserCount(userCount || 0);
       setQuestionCount(questionCount || 0);
     } catch (error) {
       console.error('Error fetching stats:', error);
@@ -171,9 +187,26 @@ const Admin = () => {
     }
   };
 
+  const handleEditImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setEditQuestionImage(file);
+      const reader = new FileReader();
+      reader.onload = (e) => {
+        setEditImagePreview(e.target?.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const removeImage = () => {
     setQuestionImage(null);
     setImagePreview(null);
+  };
+
+  const removeEditImage = () => {
+    setEditQuestionImage(null);
+    setEditImagePreview(null);
   };
 
   const handleOptionChange = (index: number, value: string) => {
@@ -349,6 +382,8 @@ const Admin = () => {
       });
 
       setEditingQuestion(null);
+      setEditQuestionImage(null);
+      setEditImagePreview(null);
       fetchExistingTests();
     } catch (error) {
       console.error('Error updating question:', error);
@@ -843,10 +878,14 @@ const Admin = () => {
           </TabsContent>
         </Tabs>
 
-        {/* Edit Question Dialog */}
+        {/* Edit Question Dialog with Image Upload */}
         {editingQuestion && (
-          <Dialog open={!!editingQuestion} onOpenChange={() => setEditingQuestion(null)}>
-            <DialogContent className="max-w-2xl">
+          <Dialog open={!!editingQuestion} onOpenChange={() => {
+            setEditingQuestion(null);
+            setEditQuestionImage(null);
+            setEditImagePreview(null);
+          }}>
+            <DialogContent className="max-w-4xl max-h-[80vh] overflow-y-auto">
               <DialogHeader>
                 <DialogTitle>Edit Question</DialogTitle>
               </DialogHeader>
@@ -866,6 +905,50 @@ const Admin = () => {
                     rows={3}
                   />
                 </div>
+
+                {/* Image Upload Section for Edit */}
+                <div>
+                  <Label>Question Image (Optional)</Label>
+                  <div className="mt-2">
+                    {editImagePreview ? (
+                      <div className="relative inline-block">
+                        <img 
+                          src={editImagePreview} 
+                          alt="Question" 
+                          className="max-w-xs max-h-48 rounded-lg border"
+                        />
+                        <Button
+                          type="button"
+                          variant="destructive"
+                          size="sm"
+                          className="absolute top-2 right-2"
+                          onClick={removeEditImage}
+                        >
+                          <X className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <div className="border-2 border-dashed border-gray-300 rounded-lg p-6 text-center">
+                        <ImageIcon className="mx-auto h-12 w-12 text-gray-400" />
+                        <div className="mt-4">
+                          <Label htmlFor="edit-image-upload" className="cursor-pointer">
+                            <span className="text-sm font-medium text-blue-600 hover:text-blue-500">
+                              Upload an image
+                            </span>
+                            <Input
+                              id="edit-image-upload"
+                              type="file"
+                              accept="image/*"
+                              onChange={handleEditImageUpload}
+                              className="hidden"
+                            />
+                          </Label>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+
                 <div>
                   <Label>Options</Label>
                   <div className="space-y-2">
@@ -927,7 +1010,11 @@ const Admin = () => {
                   />
                 </div>
                 <div className="flex justify-end gap-2">
-                  <Button variant="outline" onClick={() => setEditingQuestion(null)}>
+                  <Button variant="outline" onClick={() => {
+                    setEditingQuestion(null);
+                    setEditQuestionImage(null);
+                    setEditImagePreview(null);
+                  }}>
                     Cancel
                   </Button>
                   <Button onClick={() => updateQuestion(editingQuestion)}>

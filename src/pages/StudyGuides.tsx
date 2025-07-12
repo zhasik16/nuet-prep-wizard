@@ -1,35 +1,34 @@
 
 import { Link } from 'react-router-dom';
-import { BookOpen, Home, Download, ExternalLink } from 'lucide-react';
+import { BookOpen, Home, Download } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const StudyGuides = () => {
   const studyGuides = [
     {
       title: "NUET Mathematics Guide",
-      description: "Complete guide covering algebra, geometry, statistics, and problem-solving strategies",
+      description: "Official mathematics specification guide covering algebra, geometry, statistics, and problem-solving strategies for NUET preparation",
       topics: ["Algebra & Functions", "Geometry & Measurement", "Statistics & Probability", "Problem Solving"],
-      downloadUrl: "#"
+      downloadUrl: "https://admissions.nu.edu.kz/wps/wcm/connect/a8fa719c-8bb7-4611-a8d0-a3cbc01728a5/MATHEMATICS+Specification+NUFYP+SET+2017+v1.0.pdf?MOD=AJPERES"
     },
     {
       title: "Critical Thinking Mastery",
-      description: "Develop logical reasoning and analytical thinking skills for NUET success",
+      description: "Official thinking skills specification guide for developing logical reasoning and analytical thinking skills for NUET success",
       topics: ["Logical Reasoning", "Pattern Recognition", "Argument Analysis", "Problem Solving"],
-      downloadUrl: "#"
-    },
-    {
-      title: "Reading Comprehension Strategies",
-      description: "Master text analysis, vocabulary, and reading skills for the NUET",
-      topics: ["Reading Strategies", "Vocabulary Building", "Text Analysis", "Comprehension Techniques"],
-      downloadUrl: "#"
-    },
-    {
-      title: "English Language Essentials",
-      description: "Grammar, vocabulary, and language usage guide for NUET preparation",
-      topics: ["Grammar Rules", "Vocabulary", "Writing Skills", "Language Usage"],
-      downloadUrl: "#"
+      downloadUrl: "https://admissions.nu.edu.kz/wps/wcm/connect/c9057198-363e-4ba7-ab50-b03a793863e4/THINKING+SKILLS+SPECIFICATION.pdf?MOD=AJPERES"
     }
   ];
+
+  const handleDownload = (url: string, title: string) => {
+    const link = document.createElement('a');
+    link.href = url;
+    link.target = '_blank';
+    link.rel = 'noopener noreferrer';
+    link.download = `${title}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
@@ -58,7 +57,7 @@ const StudyGuides = () => {
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-4">Study Guides</h1>
           <p className="text-xl text-gray-600 max-w-3xl mx-auto">
-            Comprehensive study materials to help you master every section of the NUET exam.
+            Official study materials and specifications to help you master every section of the NUET exam.
           </p>
         </div>
 
@@ -80,12 +79,37 @@ const StudyGuides = () => {
                 </ul>
               </div>
 
-              <Button className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700">
+              <Button 
+                className="w-full bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700"
+                onClick={() => handleDownload(guide.downloadUrl, guide.title)}
+              >
                 <Download className="w-4 h-4 mr-2" />
-                Download Guide (Coming Soon)
+                Download Official PDF Guide
               </Button>
             </div>
           ))}
+        </div>
+
+        <div className="mt-12 text-center">
+          <div className="bg-white rounded-2xl shadow-xl p-8">
+            <h3 className="text-2xl font-bold text-gray-900 mb-4">Additional Resources</h3>
+            <p className="text-gray-600 mb-6">
+              These are the official specification documents from Nazarbayev University. 
+              Make sure to review them thoroughly as they contain the exact topics and format you'll encounter on the NUET exam.
+            </p>
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+              <Link to="/practice">
+                <Button variant="outline" className="w-full sm:w-auto">
+                  Practice Questions
+                </Button>
+              </Link>
+              <Link to="/about">
+                <Button variant="outline" className="w-full sm:w-auto">
+                  Learn More About NUET
+                </Button>
+              </Link>
+            </div>
+          </div>
         </div>
       </div>
     </div>
