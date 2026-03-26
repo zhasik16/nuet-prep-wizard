@@ -1,14 +1,25 @@
-
-import { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { BookOpen, Home, User, Mail, Calendar, Trash2, Edit, Save, X } from 'lucide-react';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Card } from '@/components/ui/card';
-import { useAuth } from '@/hooks/useAuth';
-import { useToast } from '@/hooks/use-toast';
-import { supabase } from '@/integrations/supabase/client';
-import { AuthGuard } from '@/components/AuthGuard';
+import { useState, useEffect } from "react";
+import { Link, useNavigate } from "react-router-dom";
+import {
+  BookOpen,
+  Home,
+  User,
+  Mail,
+  Calendar,
+  Trash2,
+  Edit,
+  Save,
+  X,
+} from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Card } from "@/components/ui/card";
+import { useClerkAuth } from "@/hooks/useClerkAuth";
+import { useToast } from "@/hooks/use-toast";
+import { AuthGuard } from "@/components/AuthGuard";
+import { supabase } from "@/integrations/supabase/client";
+import SmartDashboard from "@/components/SmartDashboard";
+import WeeklySummary from "@/components/WeeklySummary";
 
 interface ProfileData {
   id: string;
@@ -21,64 +32,90 @@ interface ProfileData {
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, signOut } = useAuth();
+  const { isSignedIn, user, signOut, userId } = useClerkAuth();
   const { toast } = useToast();
-  
+
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [isEditing, setIsEditing] = useState(false);
   const [editData, setEditData] = useState({
-    full_name: '',
-    nickname: ''
+    full_name: "",
+    nickname: "",
   });
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
-    if (user) {
+    if (isSignedIn && userId) {
       loadProfile();
     }
-  }, [user]);
+  }, [isSignedIn, userId]);
 
   const loadProfile = async () => {
-    if (!user) return;
-    
+    if (!userId) return;
+
     try {
       const { data, error } = await supabase
-        .from('profiles')
-        .select('*')
-        .eq('id', user.id)
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error loading profile:', error);
+      if (error && error.code !== "PGRST116") {
+        console.error("Error loading profile:", error);
       } else if (data) {
         setProfile(data);
         setEditData({
-          full_name: data.full_name || '',
-          nickname: data.nickname || ''
+          full_name: data.full_name || "",
+          nickname: data.nickname || "",
         });
+      } else {
+        // Create profile if it doesn't exist
+        const { data: newProfile, error: insertError } = await supabase
+          .from("profiles")
+          .insert([
+            {
+              id: userId,
+              email: user?.primaryEmailAddress?.emailAddress,
+              full_name: user?.fullName || "",
+              nickname: user?.username || "",
+              created_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            },
+          ])
+          .select()
+          .single();
+
+        if (insertError) {
+          console.error("Error creating profile:", insertError);
+        } else if (newProfile) {
+          setProfile(newProfile);
+          setEditData({
+            full_name: newProfile.full_name || "",
+            nickname: newProfile.nickname || "",
+          });
+        }
       }
     } catch (error) {
-      console.error('Error loading profile:', error);
+      console.error("Error loading profile:", error);
     } finally {
       setLoading(false);
     }
   };
 
   const handleUpdateProfile = async () => {
-    if (!user) return;
-    
+    if (!userId) return;
+
     setUpdating(true);
     try {
       const { error } = await supabase
-        .from('profiles')
+        .from("profiles")
         .update({
           full_name: editData.full_name,
           nickname: editData.nickname,
-          updated_at: new Date().toISOString()
+          updated_at: new Date().toISOString(),
         })
-        .eq('id', user.id);
+        .eq("id", userId);
 
       if (error) throw error;
 
@@ -86,7 +123,7 @@ const Profile = () => {
         title: "Success",
         description: "Profile updated successfully!",
       });
-      
+
       setIsEditing(false);
       loadProfile();
     } catch (error: any) {
@@ -101,29 +138,29 @@ const Profile = () => {
   };
 
   const handleDeleteAccount = async () => {
-    if (!user) return;
-    
+    if (!userId || !user) return;
+
     const confirmed = window.confirm(
-      'Are you sure you want to delete your account? This action cannot be undone.'
+      "Are you sure you want to delete your account? This action cannot be undone.",
     );
-    
+
     if (!confirmed) return;
-    
+
     setDeleting(true);
     try {
       // First delete user data from profiles table
       const { error: profileError } = await supabase
-        .from('profiles')
+        .from("profiles")
         .delete()
-        .eq('id', user.id);
+        .eq("id", userId);
 
       if (profileError) throw profileError;
 
       // Delete quiz attempts
       const { error: attemptsError } = await supabase
-        .from('quiz_attempts')
+        .from("quiz_attempts")
         .delete()
-        .eq('user_id', user.id);
+        .eq("user_id", userId);
 
       if (attemptsError) throw attemptsError;
 
@@ -131,9 +168,9 @@ const Profile = () => {
         title: "Account Deleted",
         description: "Your account has been successfully deleted.",
       });
-      
+
       await signOut();
-      navigate('/');
+      navigate("/");
     } catch (error: any) {
       toast({
         title: "Error",
@@ -159,7 +196,7 @@ const Profile = () => {
     <AuthGuard>
       <div className="min-h-screen bg-gradient-to-br from-blue-50 via-white to-purple-50">
         {/* Navigation */}
-        <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200">
+        <nav className="bg-white/80 backdrop-blur-md border-b border-gray-200 sticky top-0 z-10">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             <div className="flex justify-between items-center h-16">
               <Link to="/" className="flex items-center space-x-2">
@@ -170,7 +207,7 @@ const Profile = () => {
                   NUET Prep
                 </span>
               </Link>
-              
+
               <div className="flex items-center space-x-4">
                 <Link to="/practice">
                   <Button variant="outline" size="sm">
@@ -188,17 +225,28 @@ const Profile = () => {
           </div>
         </nav>
 
-        <div className="max-w-4xl mx-auto px-4 py-12">
+        <div className="max-w-7xl mx-auto px-4 py-12">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-gray-900 mb-4">My Profile</h1>
-            <p className="text-xl text-gray-600">Manage your account settings and information</p>
+            <h1 className="text-4xl font-bold text-gray-900 mb-4">
+              My Profile
+            </h1>
+            <p className="text-xl text-gray-600">
+              Manage your account settings and track your progress
+            </p>
+          </div>
+
+          {/* Weekly Summary Section */}
+          <div className="mb-8">
+            <WeeklySummary />
           </div>
 
           <div className="grid md:grid-cols-2 gap-8">
             {/* Profile Information */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-6">
-                <h2 className="text-2xl font-bold text-gray-900">Profile Information</h2>
+                <h2 className="text-2xl font-bold text-gray-900">
+                  Profile Information
+                </h2>
                 {!isEditing ? (
                   <Button
                     variant="outline"
@@ -216,7 +264,7 @@ const Profile = () => {
                       disabled={updating}
                     >
                       <Save className="w-4 h-4 mr-2" />
-                      {updating ? 'Saving...' : 'Save'}
+                      {updating ? "Saving..." : "Save"}
                     </Button>
                     <Button
                       variant="outline"
@@ -224,8 +272,8 @@ const Profile = () => {
                       onClick={() => {
                         setIsEditing(false);
                         setEditData({
-                          full_name: profile?.full_name || '',
-                          nickname: profile?.nickname || ''
+                          full_name: profile?.full_name || "",
+                          nickname: profile?.nickname || "",
                         });
                       }}
                     >
@@ -243,7 +291,9 @@ const Profile = () => {
                   </label>
                   <div className="flex items-center space-x-3">
                     <Mail className="w-5 h-5 text-gray-400" />
-                    <span className="text-gray-900">{user?.email}</span>
+                    <span className="text-gray-900">
+                      {user?.primaryEmailAddress?.emailAddress}
+                    </span>
                   </div>
                 </div>
 
@@ -254,13 +304,20 @@ const Profile = () => {
                   {isEditing ? (
                     <Input
                       value={editData.full_name}
-                      onChange={(e) => setEditData(prev => ({ ...prev, full_name: e.target.value }))}
+                      onChange={(e) =>
+                        setEditData((prev) => ({
+                          ...prev,
+                          full_name: e.target.value,
+                        }))
+                      }
                       placeholder="Enter your full name"
                     />
                   ) : (
                     <div className="flex items-center space-x-3">
                       <User className="w-5 h-5 text-gray-400" />
-                      <span className="text-gray-900">{profile?.full_name || 'Not set'}</span>
+                      <span className="text-gray-900">
+                        {profile?.full_name || user?.fullName || "Not set"}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -272,13 +329,20 @@ const Profile = () => {
                   {isEditing ? (
                     <Input
                       value={editData.nickname}
-                      onChange={(e) => setEditData(prev => ({ ...prev, nickname: e.target.value }))}
+                      onChange={(e) =>
+                        setEditData((prev) => ({
+                          ...prev,
+                          nickname: e.target.value,
+                        }))
+                      }
                       placeholder="Enter your nickname"
                     />
                   ) : (
                     <div className="flex items-center space-x-3">
                       <User className="w-5 h-5 text-gray-400" />
-                      <span className="text-gray-900">{profile?.nickname || 'Not set'}</span>
+                      <span className="text-gray-900">
+                        {profile?.nickname || user?.username || "Not set"}
+                      </span>
                     </div>
                   )}
                 </div>
@@ -290,7 +354,9 @@ const Profile = () => {
                   <div className="flex items-center space-x-3">
                     <Calendar className="w-5 h-5 text-gray-400" />
                     <span className="text-gray-900">
-                      {profile?.created_at ? new Date(profile.created_at).toLocaleDateString() : 'Unknown'}
+                      {user?.createdAt
+                        ? new Date(user.createdAt).toLocaleDateString()
+                        : "Unknown"}
                     </span>
                   </div>
                 </div>
@@ -299,11 +365,15 @@ const Profile = () => {
 
             {/* Account Actions */}
             <Card className="p-6">
-              <h2 className="text-2xl font-bold text-gray-900 mb-6">Account Actions</h2>
-              
+              <h2 className="text-2xl font-bold text-gray-900 mb-6">
+                Account Actions
+              </h2>
+
               <div className="space-y-4">
                 <div className="p-4 bg-yellow-50 border border-yellow-200 rounded-lg">
-                  <h3 className="font-semibold text-yellow-800 mb-2">Change Password</h3>
+                  <h3 className="font-semibold text-yellow-800 mb-2">
+                    Change Password
+                  </h3>
                   <p className="text-sm text-yellow-700 mb-3">
                     Update your password to keep your account secure.
                   </p>
@@ -311,17 +381,13 @@ const Profile = () => {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      // Trigger password reset
-                      const email = user?.email;
-                      if (email) {
-                        supabase.auth.resetPasswordForEmail(email, {
-                          redirectTo: `${window.location.origin}/reset-password`,
-                        });
-                        toast({
-                          title: "Password Reset",
-                          description: "Check your email for password reset instructions.",
-                        });
-                      }
+                      window.location.href =
+                        "https://accounts.clerk.com/reset-password";
+                      toast({
+                        title: "Password Reset",
+                        description:
+                          "You'll be redirected to reset your password.",
+                      });
                     }}
                   >
                     Reset Password
@@ -329,9 +395,12 @@ const Profile = () => {
                 </div>
 
                 <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-                  <h3 className="font-semibold text-red-800 mb-2">Delete Account</h3>
+                  <h3 className="font-semibold text-red-800 mb-2">
+                    Delete Account
+                  </h3>
                   <p className="text-sm text-red-700 mb-3">
-                    Permanently delete your account and all associated data. This action cannot be undone.
+                    Permanently delete your account and all associated data.
+                    This action cannot be undone.
                   </p>
                   <Button
                     variant="destructive"
@@ -340,11 +409,16 @@ const Profile = () => {
                     disabled={deleting}
                   >
                     <Trash2 className="w-4 h-4 mr-2" />
-                    {deleting ? 'Deleting...' : 'Delete Account'}
+                    {deleting ? "Deleting..." : "Delete Account"}
                   </Button>
                 </div>
               </div>
             </Card>
+          </div>
+
+          {/* AI-Powered Smart Dashboard */}
+          <div className="mt-8">
+            <SmartDashboard />
           </div>
         </div>
       </div>

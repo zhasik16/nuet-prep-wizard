@@ -1,15 +1,14 @@
-
-import { useAuth } from '@/hooks/useAuth';
-import { Navigate } from 'react-router-dom';
+import { useAuth } from "@clerk/clerk-react";
+import { Navigate } from "react-router-dom";
 
 interface AuthGuardProps {
   children: React.ReactNode;
 }
 
 export const AuthGuard = ({ children }: AuthGuardProps) => {
-  const { user, loading } = useAuth();
+  const { isLoaded, isSignedIn } = useAuth();
 
-  if (loading) {
+  if (!isLoaded) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <div className="animate-spin rounded-full h-32 w-32 border-b-2 border-blue-600"></div>
@@ -17,7 +16,7 @@ export const AuthGuard = ({ children }: AuthGuardProps) => {
     );
   }
 
-  if (!user) {
+  if (!isSignedIn) {
     return <Navigate to="/login" replace />;
   }
 

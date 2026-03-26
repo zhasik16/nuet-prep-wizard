@@ -6,245 +6,210 @@ export type Json =
   | { [key: string]: Json | undefined }
   | Json[]
 
+export interface Source {
+  source_id: number;
+  exam: string;
+  year: number | null;
+  paper: string | null;
+}
+
+export interface Question {
+  question_id: number;
+  source_id: number | null;
+  source_qnum: number | null;
+  subject: string | null;
+  question_text: string | null;
+  has_figure: string | null;
+  difficulty: string | null;
+  answer_type: string | null;
+}
+
+export interface Option {
+  option_id: number;
+  question_id: number | null;
+  label: string | null;
+  option_text: string | null;
+}
+
+export interface CorrectAnswer {
+  answer_id: number;
+  question_id: number | null;
+  answer_expression: string | null;
+}
+
+export interface TopicCategory {
+  category_id: number;
+  category_name: string | null;
+}
+
+export interface Topic {
+  topic_id: number;
+  topic_name: string | null;
+  category_id: number | null;
+}
+
+export interface QuestionTopic {
+  question_id: number;
+  topic_id: number | null;
+}
+
+export interface Solution {
+  id: number;
+  created_at: string;
+}
+
+export interface Profile {
+  id: string;
+  email: string | null;
+  full_name: string | null;
+  nickname: string | null;
+  created_at: string | null;
+  updated_at: string | null;
+}
+
+export interface QuizAttempt {
+  id: string;
+  user_id: string | null;
+  test_type: string;
+  test_title: string | null;
+  score: number;
+  total_questions: number;
+  time_elapsed: number;
+  answers: Json;
+  weak_topics: string[] | null;
+  created_at: string | null;
+}
+
 export type Database = {
-  // Allows to automatically instanciate createClient with right options
-  // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
-  __InternalSupabase: {
-    PostgrestVersion: "12.2.3 (519615d)"
-  }
   public: {
     Tables: {
+      "1 sources": {
+        Row: Source;
+        Insert: Omit<Source, 'source_id'> & { source_id?: number };
+        Update: Partial<Source>;
+        Relationships: [];
+      };
+      "2 questions": {
+        Row: Question;
+        Insert: Omit<Question, 'question_id'> & { question_id?: number };
+        Update: Partial<Question>;
+        Relationships: [
+          {
+            foreignKeyName: "questions_source_id_fkey";
+            columns: ["source_id"];
+            isOneToOne: false;
+            referencedRelation: "1 sources";
+            referencedColumns: ["source_id"];
+          }
+        ];
+      };
+      "3 options": {
+        Row: Option;
+        Insert: Omit<Option, 'option_id'> & { option_id?: number };
+        Update: Partial<Option>;
+        Relationships: [
+          {
+            foreignKeyName: "options_question_id_fkey";
+            columns: ["question_id"];
+            isOneToOne: false;
+            referencedRelation: "2 questions";
+            referencedColumns: ["question_id"];
+          }
+        ];
+      };
+      "4 correct answers": {
+        Row: CorrectAnswer;
+        Insert: Omit<CorrectAnswer, 'answer_id'> & { answer_id?: number };
+        Update: Partial<CorrectAnswer>;
+        Relationships: [
+          {
+            foreignKeyName: "correct_answers_question_id_fkey";
+            columns: ["question_id"];
+            isOneToOne: false;
+            referencedRelation: "2 questions";
+            referencedColumns: ["question_id"];
+          }
+        ];
+      };
+      "5 topics categories": {
+        Row: TopicCategory;
+        Insert: Omit<TopicCategory, 'category_id'> & { category_id?: number };
+        Update: Partial<TopicCategory>;
+        Relationships: [];
+      };
+      "6 topics": {
+        Row: Topic;
+        Insert: Omit<Topic, 'topic_id'> & { topic_id?: number };
+        Update: Partial<Topic>;
+        Relationships: [
+          {
+            foreignKeyName: "topics_category_id_fkey";
+            columns: ["category_id"];
+            isOneToOne: false;
+            referencedRelation: "5 topics categories";
+            referencedColumns: ["category_id"];
+          }
+        ];
+      };
+      "7 questions topics": {
+        Row: QuestionTopic;
+        Insert: Omit<QuestionTopic, 'question_id'> & { question_id?: number };
+        Update: Partial<QuestionTopic>;
+        Relationships: [
+          {
+            foreignKeyName: "questions_topics_question_id_fkey";
+            columns: ["question_id"];
+            isOneToOne: false;
+            referencedRelation: "2 questions";
+            referencedColumns: ["question_id"];
+          },
+          {
+            foreignKeyName: "questions_topics_topic_id_fkey";
+            columns: ["topic_id"];
+            isOneToOne: false;
+            referencedRelation: "6 topics";
+            referencedColumns: ["topic_id"];
+          }
+        ];
+      };
+      "8 solutions": {
+        Row: Solution;
+        Insert: Omit<Solution, 'id'> & { id?: number };
+        Update: Partial<Solution>;
+        Relationships: [];
+      };
       profiles: {
-        Row: {
-          created_at: string | null
-          email: string | null
-          full_name: string | null
-          id: string
-          nickname: string | null
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
-          id: string
-          nickname?: string | null
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          email?: string | null
-          full_name?: string | null
-          id?: string
-          nickname?: string | null
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      questions: {
-        Row: {
-          correct_answer: string
-          created_at: string | null
-          difficulty: string | null
-          explanation: string
-          id: string
-          options: Json
-          question: string
-          subject: string
-          test_type: string
-        }
-        Insert: {
-          correct_answer: string
-          created_at?: string | null
-          difficulty?: string | null
-          explanation: string
-          id?: string
-          options: Json
-          question: string
-          subject: string
-          test_type: string
-        }
-        Update: {
-          correct_answer?: string
-          created_at?: string | null
-          difficulty?: string | null
-          explanation?: string
-          id?: string
-          options?: Json
-          question?: string
-          subject?: string
-          test_type?: string
-        }
-        Relationships: []
-      }
+        Row: Profile;
+        Insert: Omit<Profile, 'created_at' | 'updated_at'> & { created_at?: string; updated_at?: string };
+        Update: Partial<Profile>;
+        Relationships: [];
+      };
       quiz_attempts: {
-        Row: {
-          answers: Json
-          completed_at: string | null
-          id: string
-          score: number
-          test_type: string
-          time_elapsed: number
-          total_questions: number
-          user_id: string | null
-        }
-        Insert: {
-          answers: Json
-          completed_at?: string | null
-          id?: string
-          score: number
-          test_type: string
-          time_elapsed: number
-          total_questions: number
-          user_id?: string | null
-        }
-        Update: {
-          answers?: Json
-          completed_at?: string | null
-          id?: string
-          score?: number
-          test_type?: string
-          time_elapsed?: number
-          total_questions?: number
-          user_id?: string | null
-        }
-        Relationships: []
-      }
-    }
+        Row: QuizAttempt;
+        Insert: Omit<QuizAttempt, 'id' | 'created_at'> & { id?: string; created_at?: string };
+        Update: Partial<QuizAttempt>;
+        Relationships: [
+          {
+            foreignKeyName: "quiz_attempts_user_id_fkey";
+            columns: ["user_id"];
+            isOneToOne: false;
+            referencedRelation: "profiles";
+            referencedColumns: ["id"];
+          }
+        ];
+      };
+    };
     Views: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     Functions: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     Enums: {
-      [_ in never]: never
-    }
+      [_ in never]: never;
+    };
     CompositeTypes: {
-      [_ in never]: never
-    }
-  }
-}
-
-type DatabaseWithoutInternals = Omit<Database, "__InternalSupabase">
-
-type DefaultSchema = DatabaseWithoutInternals[Extract<keyof Database, "public">]
-
-export type Tables<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-        DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
-      DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])[TableName] extends {
-      Row: infer R
-    }
-    ? R
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])
-    ? (DefaultSchema["Tables"] &
-        DefaultSchema["Views"])[DefaultSchemaTableNameOrOptions] extends {
-        Row: infer R
-      }
-      ? R
-      : never
-    : never
-
-export type TablesInsert<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Insert: infer I
-    }
-    ? I
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Insert: infer I
-      }
-      ? I
-      : never
-    : never
-
-export type TablesUpdate<
-  DefaultSchemaTableNameOrOptions extends
-    | keyof DefaultSchema["Tables"]
-    | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
-> = DefaultSchemaTableNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"][TableName] extends {
-      Update: infer U
-    }
-    ? U
-    : never
-  : DefaultSchemaTableNameOrOptions extends keyof DefaultSchema["Tables"]
-    ? DefaultSchema["Tables"][DefaultSchemaTableNameOrOptions] extends {
-        Update: infer U
-      }
-      ? U
-      : never
-    : never
-
-export type Enums<
-  DefaultSchemaEnumNameOrOptions extends
-    | keyof DefaultSchema["Enums"]
-    | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
-> = DefaultSchemaEnumNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"][EnumName]
-  : DefaultSchemaEnumNameOrOptions extends keyof DefaultSchema["Enums"]
-    ? DefaultSchema["Enums"][DefaultSchemaEnumNameOrOptions]
-    : never
-
-export type CompositeTypes<
-  PublicCompositeTypeNameOrOptions extends
-    | keyof DefaultSchema["CompositeTypes"]
-    | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
-    schema: keyof DatabaseWithoutInternals
-  }
-    ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
-> = PublicCompositeTypeNameOrOptions extends {
-  schema: keyof DatabaseWithoutInternals
-}
-  ? DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"][CompositeTypeName]
-  : PublicCompositeTypeNameOrOptions extends keyof DefaultSchema["CompositeTypes"]
-    ? DefaultSchema["CompositeTypes"][PublicCompositeTypeNameOrOptions]
-    : never
-
-export const Constants = {
-  public: {
-    Enums: {},
-  },
-} as const
+      [_ in never]: never;
+    };
+  };
+};
