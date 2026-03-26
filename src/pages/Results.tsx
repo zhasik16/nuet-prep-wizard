@@ -10,23 +10,38 @@ import {
   Eye,
   EyeOff,
   Sparkles,
+  Target,
+  TrendingUp,
+  Lightbulb,
+  Calendar,
+  ArrowRight,
+  Brain,
+  AlertCircle,
+  Zap,
+  Timer,
+  BarChart3,
+  ListChecks,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
 import {
   ChartContainer,
   ChartTooltip,
   ChartTooltipContent,
 } from "@/components/ui/chart";
 import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
   ResponsiveContainer,
   PieChart,
   Pie,
   Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  LineChart,
+  Line,
 } from "recharts";
 import AITestAnalysis from "@/components/AITestAnalysis";
 import AIExplanationComponent from "@/components/AIExplanation";
@@ -38,6 +53,7 @@ interface QuestionData {
   topic: string;
   isCorrect: boolean;
   options?: string[];
+  timeSpent?: number;
 }
 
 interface ResultsData {
@@ -52,12 +68,28 @@ interface ResultsData {
   weakTopics: string[];
 }
 
+interface Recommendation {
+  id: string;
+  title: string;
+  description: string;
+  reason: string;
+  priority: "critical" | "high" | "medium" | "low";
+  actionableSteps: string[];
+  estimatedTime: string;
+  expectedImprovement: number;
+  category: "topic" | "strategy" | "time" | "practice";
+}
+
 const Results = () => {
   const navigate = useNavigate();
   const [results, setResults] = useState<ResultsData | null>(null);
   const [showExplanations, setShowExplanations] = useState<{
     [key: number]: boolean;
   }>({});
+  const [recommendations, setRecommendations] = useState<Recommendation[]>([]);
+  const [activeRecommendation, setActiveRecommendation] = useState<
+    string | null
+  >(null);
 
   useEffect(() => {
     const savedResults = localStorage.getItem("latestResults");
@@ -68,7 +100,116 @@ const Results = () => {
     const parsedResults = JSON.parse(savedResults);
     console.log("Loaded results:", parsedResults);
     setResults(parsedResults);
+    generateRecommendations(parsedResults);
   }, [navigate]);
+
+  const generateRecommendations = (data: ResultsData) => {
+    const recs: Recommendation[] = [];
+    const scorePercentage = data.score;
+    const weakTopics = data.weakTopics;
+    const avgTimePerQuestion = data.timeElapsed / data.totalQuestions;
+
+    // 1. Topic-based recommendations
+    weakTopics.forEach((topic, index) => {
+      const wrongCount = data.questions.filter(
+        (q) => q.topic === topic && !q.isCorrect,
+      ).length;
+
+      recs.push({
+        id: `topic-${index}`,
+        title: `Master ${topic}`,
+        description: `You missed ${wrongCount} question${wrongCount > 1 ? "s" : ""} on ${topic}.`,
+        reason: `This topic appears frequently in NUET. Improving here could boost your score by up to ${Math.min(20, wrongCount * 5)}%.`,
+        priority: wrongCount >= 2 ? "critical" : "high",
+        actionableSteps: [
+          `Review ${topic} fundamentals (30 min)`,
+          `Complete 15 practice questions (45 min)`,
+          `Take a focused quiz on ${topic} (20 min)`,
+        ],
+        estimatedTime: "2 hours",
+        expectedImprovement: wrongCount * 5,
+        category: "topic",
+      });
+    });
+
+    // 2. Time management recommendation
+    if (avgTimePerQuestion > 90) {
+      recs.push({
+        id: "time-management",
+        title: "Improve Your Pace",
+        description: `You spent an average of ${Math.round(avgTimePerQuestion)} seconds per question.`,
+        reason:
+          "NUET requires quick thinking. Spending too much time per question reduces your chance to complete all sections.",
+        priority: avgTimePerQuestion > 120 ? "critical" : "high",
+        actionableSteps: [
+          "Use a timer during practice (90s per question)",
+          "Skip difficult questions and return later",
+          "Practice with 75% time limit",
+        ],
+        estimatedTime: "3 practice sessions",
+        expectedImprovement: 10,
+        category: "time",
+      });
+    }
+
+    // 3. Practice frequency recommendation
+    recs.push({
+      id: "practice-frequency",
+      title: "Maintain Consistency",
+      description: "Regular practice leads to better retention.",
+      reason: "Students who take 2-3 tests per week improve 20% faster.",
+      priority: "medium",
+      actionableSteps: [
+        "Take 2 more practice tests this week",
+        "Review mistakes immediately after each test",
+        "Track your progress in the study planner",
+      ],
+      estimatedTime: "3-4 hours/week",
+      expectedImprovement: 15,
+      category: "practice",
+    });
+
+    // 4. Score improvement recommendation based on weak areas
+    if (scorePercentage < 70) {
+      recs.push({
+        id: "score-boost",
+        title: "Score Booster Strategy",
+        description: `Your current score is ${scorePercentage}%. Let's get you to 70%+!`,
+        reason:
+          "Focusing on high-weight topics yields the fastest improvement.",
+        priority: "critical",
+        actionableSteps: [
+          `Focus on ${weakTopics.slice(0, 2).join(" and ")}`,
+          "Take topic-specific quizzes",
+          "Review AI explanations for incorrect answers",
+        ],
+        estimatedTime: "4-5 hours",
+        expectedImprovement: 15,
+        category: "strategy",
+      });
+    }
+
+    // 5. Motivation recommendation for high scorers
+    if (scorePercentage >= 85) {
+      recs.push({
+        id: "excellence",
+        title: "Maintain Excellence",
+        description: "Great work! You're on track for an excellent score.",
+        reason: "Consistent practice will help you maintain this level.",
+        priority: "low",
+        actionableSteps: [
+          "Take full-length timed tests weekly",
+          "Review explanations even for correct answers",
+          "Help peers - teaching reinforces learning",
+        ],
+        estimatedTime: "2 hours/week",
+        expectedImprovement: 5,
+        category: "strategy",
+      });
+    }
+
+    setRecommendations(recs.slice(0, 4));
+  };
 
   if (!results) {
     return (
@@ -86,7 +227,6 @@ const Results = () => {
     (q: QuestionData) => !q.userAnswer,
   ).length;
 
-  // Chart data
   const scoreData = [
     { name: "Correct", value: correctAnswers, color: "#10b981" },
     { name: "Incorrect", value: wrongAnswers, color: "#ef4444" },
@@ -129,7 +269,32 @@ const Results = () => {
     return `${mins.toString().padStart(2, "0")}:${secs.toString().padStart(2, "0")}`;
   };
 
-  // Generate options display based on user answer and correct answer
+  const getPriorityColor = (priority: string) => {
+    switch (priority) {
+      case "critical":
+        return "border-l-red-600 bg-red-50";
+      case "high":
+        return "border-l-orange-500 bg-orange-50";
+      case "medium":
+        return "border-l-yellow-500 bg-yellow-50";
+      default:
+        return "border-l-green-500 bg-green-50";
+    }
+  };
+
+  const getPriorityIcon = (priority: string) => {
+    switch (priority) {
+      case "critical":
+        return <AlertCircle className="w-4 h-4 text-red-600" />;
+      case "high":
+        return <Zap className="w-4 h-4 text-orange-600" />;
+      case "medium":
+        return <Target className="w-4 h-4 text-yellow-600" />;
+      default:
+        return <CheckCircle className="w-4 h-4 text-green-600" />;
+    }
+  };
+
   const generateOptionsDisplay = (question: QuestionData) => {
     const options = [];
     const letters = ["A", "B", "C", "D"];
@@ -174,12 +339,20 @@ const Results = () => {
                 NUET Prep
               </span>
             </Link>
-            <Link to="/">
-              <Button variant="outline" size="sm">
-                <Home className="w-4 h-4 mr-2" />
-                Home
-              </Button>
-            </Link>
+            <div className="flex items-center gap-3">
+              <Link to="/profile">
+                <Button variant="outline" size="sm">
+                  <TrendingUp className="w-4 h-4 mr-2" />
+                  Progress
+                </Button>
+              </Link>
+              <Link to="/practice">
+                <Button variant="outline" size="sm">
+                  <RotateCcw className="w-4 h-4 mr-2" />
+                  Practice
+                </Button>
+              </Link>
+            </div>
           </div>
         </div>
       </nav>
@@ -245,11 +418,19 @@ const Results = () => {
                 Take Another Test
               </Button>
             </Link>
-            <Link to="/">
-              <Button variant="outline" size="lg">
-                Back to Home
-              </Button>
-            </Link>
+            <Button
+              variant="outline"
+              size="lg"
+              onClick={() => {
+                const event = new CustomEvent("openAIAssistant", {
+                  detail: { tab: "planner" },
+                });
+                window.dispatchEvent(event);
+              }}
+            >
+              <ListChecks className="w-4 h-4 mr-2" />
+              View Study Plan
+            </Button>
           </div>
         </div>
 
@@ -267,9 +448,110 @@ const Results = () => {
           totalQuestions={results.totalQuestions}
         />
 
+        {/* Smart Recommendations Section */}
+        <div className="mb-8">
+          <div className="flex items-center gap-2 mb-4">
+            <Brain className="w-6 h-6 text-purple-600" />
+            <h2 className="text-2xl font-bold text-gray-900">
+              Smart Recommendations
+            </h2>
+            <Badge className="bg-purple-100 text-purple-700">AI-Powered</Badge>
+          </div>
+          <div className="grid md:grid-cols-2 gap-4">
+            {recommendations.map((rec) => (
+              <Card
+                key={rec.id}
+                className={`cursor-pointer transition-all hover:shadow-lg ${getPriorityColor(rec.priority)} ${activeRecommendation === rec.id ? "ring-2 ring-purple-500" : ""}`}
+                onClick={() =>
+                  setActiveRecommendation(
+                    activeRecommendation === rec.id ? null : rec.id,
+                  )
+                }
+              >
+                <CardContent className="p-4">
+                  <div className="flex items-start gap-3">
+                    <div className="p-2 bg-white rounded-lg shadow-sm">
+                      {getPriorityIcon(rec.priority)}
+                    </div>
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold text-gray-900">
+                          {rec.title}
+                        </h3>
+                        <Badge
+                          className={
+                            rec.priority === "critical"
+                              ? "bg-red-500"
+                              : rec.priority === "high"
+                                ? "bg-orange-500"
+                                : "bg-yellow-500"
+                          }
+                        >
+                          {rec.priority.toUpperCase()}
+                        </Badge>
+                      </div>
+                      <p className="text-sm text-gray-600 mb-2">
+                        {rec.description}
+                      </p>
+                      <div className="bg-white/50 rounded-lg p-2 mb-2">
+                        <p className="text-xs text-gray-500 flex items-start gap-1">
+                          <Lightbulb className="w-3 h-3 mt-0.5 text-yellow-600" />
+                          <span>{rec.reason}</span>
+                        </p>
+                      </div>
+
+                      {activeRecommendation === rec.id && (
+                        <div className="mt-3 space-y-2 animate-in fade-in duration-200">
+                          <div className="flex items-center gap-2 text-xs text-gray-500">
+                            <Timer className="w-3 h-3" />
+                            <span>Estimated: {rec.estimatedTime}</span>
+                            <TrendingUp className="w-3 h-3 ml-2" />
+                            <span className="text-green-600">
+                              +{rec.expectedImprovement}% expected
+                            </span>
+                          </div>
+                          <div className="space-y-1">
+                            {rec.actionableSteps.map((step, i) => (
+                              <div
+                                key={i}
+                                className="flex items-start gap-2 text-sm"
+                              >
+                                <span className="text-purple-600 font-bold">
+                                  {i + 1}.
+                                </span>
+                                <span className="text-gray-700">{step}</span>
+                              </div>
+                            ))}
+                          </div>
+                          <Button
+                            size="sm"
+                            className="w-full mt-2 bg-purple-600 hover:bg-purple-700"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              const event = new CustomEvent("openAIAssistant", {
+                                detail: {
+                                  tab: "planner",
+                                  topic: rec.title.replace("Master ", ""),
+                                },
+                              });
+                              window.dispatchEvent(event);
+                            }}
+                          >
+                            Add to Study Plan
+                            <ArrowRight className="w-3 h-3 ml-1" />
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
+
         {/* Performance Charts */}
         <div className="grid md:grid-cols-2 gap-8 mb-8">
-          {/* Score Distribution Pie Chart */}
           <Card>
             <CardHeader>
               <CardTitle>Score Distribution</CardTitle>
@@ -311,40 +593,26 @@ const Results = () => {
             </CardContent>
           </Card>
 
-          {/* Topic Performance */}
-          {subjectData.length > 0 && (
-            <Card>
-              <CardHeader>
-                <CardTitle>Topic Performance</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {subjectData.map((topic, index) => (
-                    <div key={index}>
-                      <div className="flex justify-between text-sm mb-1">
-                        <span className="font-medium">{topic.subject}</span>
-                        <span className="text-gray-600">
-                          {topic.percentage}% ({topic.correct}/{topic.total})
-                        </span>
-                      </div>
-                      <div className="bg-gray-200 rounded-full h-2">
-                        <div
-                          className={`h-2 rounded-full ${
-                            topic.percentage >= 80
-                              ? "bg-green-500"
-                              : topic.percentage >= 60
-                                ? "bg-yellow-500"
-                                : "bg-red-500"
-                          }`}
-                          style={{ width: `${topic.percentage}%` }}
-                        />
-                      </div>
+          <Card>
+            <CardHeader>
+              <CardTitle>Topic Performance</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                {subjectData.map((topic, index) => (
+                  <div key={index}>
+                    <div className="flex justify-between text-sm mb-1">
+                      <span className="font-medium">{topic.subject}</span>
+                      <span className="text-gray-600">
+                        {topic.percentage}% ({topic.correct}/{topic.total})
+                      </span>
                     </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                    <Progress value={topic.percentage} className="h-2" />
+                  </div>
+                ))}
+              </div>
+            </CardContent>
+          </Card>
         </div>
 
         {/* Performance Feedback */}
@@ -370,22 +638,29 @@ const Results = () => {
             <div className="text-sm text-gray-600">
               <strong>Recommendation:</strong>{" "}
               {results.score < 80
-                ? "Check out the AI-powered analysis above for detailed insights and personalized study recommendations to improve your weak areas."
-                : "You're ready for the actual NUET! Continue practicing to maintain your strong performance and aim for a perfect score!"}
+                ? "Check out the Smart Recommendations above for personalized next steps."
+                : "You're ready for the actual NUET! Continue practicing to maintain your strong performance."}
             </div>
             {results.weakTopics && results.weakTopics.length > 0 && (
               <div className="mt-4 pt-4 border-t border-blue-200">
-                <p className="text-sm font-semibold text-blue-800">
-                  Topics to focus on:
+                <p className="text-sm font-semibold text-blue-800 flex items-center gap-1">
+                  <Target className="w-4 h-4" />
+                  Priority Focus Areas:
                 </p>
                 <div className="flex flex-wrap gap-2 mt-2">
                   {results.weakTopics.map((topic, i) => (
-                    <span
+                    <Badge
                       key={i}
-                      className="px-2 py-1 bg-blue-100 text-blue-700 rounded-full text-xs"
+                      className="bg-red-100 text-red-700 hover:bg-red-200 cursor-pointer"
+                      onClick={() => {
+                        const event = new CustomEvent("openAIAssistant", {
+                          detail: { tab: "planner", topic },
+                        });
+                        window.dispatchEvent(event);
+                      }}
                     >
                       {topic}
-                    </span>
+                    </Badge>
                   ))}
                 </div>
               </div>
@@ -395,9 +670,14 @@ const Results = () => {
 
         {/* Detailed Question Review */}
         <div className="bg-white rounded-2xl shadow-xl p-8">
-          <h2 className="text-2xl font-bold text-gray-900 mb-6">
-            Question Review
-          </h2>
+          <div className="flex items-center justify-between mb-6">
+            <h2 className="text-2xl font-bold text-gray-900">
+              Question Review
+            </h2>
+            <Badge variant="outline" className="text-gray-500">
+              {results.questions.length} Questions
+            </Badge>
+          </div>
           <div className="space-y-6">
             {results.questions.map((question: QuestionData, index: number) => {
               const userAnswer = question.userAnswer;
@@ -417,25 +697,26 @@ const Results = () => {
                   }`}
                 >
                   <div className="flex justify-between items-start mb-4">
-                    <div className="flex items-center space-x-3">
+                    <div className="flex items-center space-x-3 flex-wrap gap-2">
                       <span className="text-sm font-semibold text-gray-600">
                         Question {index + 1}
                       </span>
-                      <span className="text-sm text-gray-500">
+                      <Badge variant="outline" className="text-xs">
                         {question.topic}
-                      </span>
+                      </Badge>
                       {!wasAnswered ? (
-                        <span className="bg-gray-500 text-white px-2 py-1 rounded text-xs">
+                        <Badge
+                          variant="secondary"
+                          className="bg-gray-500 text-white"
+                        >
                           Unanswered
-                        </span>
+                        </Badge>
                       ) : isCorrect ? (
-                        <span className="bg-green-500 text-white px-2 py-1 rounded text-xs">
+                        <Badge className="bg-green-500 text-white">
                           Correct
-                        </span>
+                        </Badge>
                       ) : (
-                        <span className="bg-red-500 text-white px-2 py-1 rounded text-xs">
-                          Incorrect
-                        </span>
+                        <Badge variant="destructive">Incorrect</Badge>
                       )}
                     </div>
                     <Button
@@ -451,12 +732,12 @@ const Results = () => {
                       {showExplanations[index] ? (
                         <>
                           <EyeOff className="w-4 h-4 mr-2" />
-                          Hide Explanation
+                          Hide
                         </>
                       ) : (
                         <>
                           <Eye className="w-4 h-4 mr-2" />
-                          Show Explanation
+                          Explain
                         </>
                       )}
                     </Button>
@@ -506,7 +787,6 @@ const Results = () => {
                         </p>
                       </div>
 
-                      {/* AI-Powered Detailed Explanation */}
                       <AIExplanationComponent
                         question={question.text}
                         userAnswer={userAnswer || ""}

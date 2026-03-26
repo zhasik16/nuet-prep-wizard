@@ -10,10 +10,45 @@ import {
   Edit,
   Save,
   X,
+  TrendingUp,
+  Award,
+  Clock,
+  Target,
+  BarChart3,
+  Activity,
+  CheckCircle2,
+  XCircle,
+  Zap,
+  CalendarDays,
+  LineChart,
+  PieChart,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
+import { Progress } from "@/components/ui/progress";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+} from "@/components/ui/chart";
+import {
+  ResponsiveContainer,
+  LineChart as ReLineChart,
+  Line,
+  XAxis,
+  YAxis,
+  CartesianGrid,
+  BarChart as ReBarChart,
+  Bar,
+  PieChart as RePieChart,
+  Pie,
+  Cell,
+  Area,
+  AreaChart,
+} from "recharts";
 import { useClerkAuth } from "@/hooks/useClerkAuth";
 import { useToast } from "@/hooks/use-toast";
 import { AuthGuard } from "@/components/AuthGuard";
@@ -30,9 +65,30 @@ interface ProfileData {
   updated_at: string | null;
 }
 
+interface QuizAttempt {
+  id: string;
+  test_type: string;
+  test_title: string;
+  score: number;
+  total_questions: number;
+  time_elapsed: number;
+  weak_topics: string[];
+  created_at: string;
+}
+
+interface SubjectStats {
+  subject: string;
+  attempts: number;
+  averageScore: number;
+  bestScore: number;
+  worstScore: number;
+  totalQuestions: number;
+  improvement: number;
+}
+
 const Profile = () => {
   const navigate = useNavigate();
-  const { isSignedIn, user, signOut, userId } = useClerkAuth();
+  const { isSignedIn, user, signOut, userId, getToken } = useClerkAuth();
   const { toast } = useToast();
 
   const [profile, setProfile] = useState<ProfileData | null>(null);
@@ -44,10 +100,27 @@ const Profile = () => {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [attempts, setAttempts] = useState<QuizAttempt[]>([]);
+  const [subjectStats, setSubjectStats] = useState<SubjectStats[]>([]);
+  const [overallStats, setOverallStats] = useState({
+    totalTests: 0,
+    averageScore: 0,
+    totalQuestions: 0,
+    totalTime: 0,
+    bestScore: 0,
+    worstScore: 100,
+    improvement: 0,
+    streak: 0,
+  });
+  const [recentActivity, setRecentActivity] = useState<QuizAttempt[]>([]);
+  const [scoreTrend, setScoreTrend] = useState<
+    { date: string; score: number }[]
+  >([]);
 
   useEffect(() => {
     if (isSignedIn && userId) {
       loadProfile();
+      loadQuizHistory();
     }
   }, [isSignedIn, userId]);
 
@@ -55,45 +128,50 @@ const Profile = () => {
     if (!userId) return;
 
     try {
-      const { data, error } = await supabase
-        .from("profiles")
-        .select("*")
-        .eq("id", userId)
-        .single();
+      const token = await getToken();
+      if (!token) return;
 
-      if (error && error.code !== "PGRST116") {
-        console.error("Error loading profile:", error);
-      } else if (data) {
-        setProfile(data);
-        setEditData({
-          full_name: data.full_name || "",
-          nickname: data.nickname || "",
-        });
-      } else {
-        // Create profile if it doesn't exist
-        const { data: newProfile, error: insertError } = await supabase
-          .from("profiles")
-          .insert([
-            {
-              id: userId,
-              email: user?.primaryEmailAddress?.emailAddress,
-              full_name: user?.fullName || "",
-              nickname: user?.username || "",
-              created_at: new Date().toISOString(),
-              updated_at: new Date().toISOString(),
-            },
-          ])
-          .select()
-          .single();
+      const response = await fetch(
+        `https://tthxgwmrukvbnggpabbs.supabase.co/rest/v1/profiles?select=*&id=eq.${userId}`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+        },
+      );
 
-        if (insertError) {
-          console.error("Error creating profile:", insertError);
-        } else if (newProfile) {
-          setProfile(newProfile);
+      if (response.ok) {
+        const data = await response.json();
+        if (data && data.length > 0) {
+          setProfile(data[0]);
           setEditData({
-            full_name: newProfile.full_name || "",
-            nickname: newProfile.nickname || "",
+            full_name: data[0].full_name || "",
+            nickname: data[0].nickname || "",
           });
+        } else {
+          // Create profile if doesn't exist
+          const createResponse = await fetch(
+            "https://tthxgwmrukvbnggpabbs.supabase.co/rest/v1/profiles",
+            {
+              method: "POST",
+              headers: {
+                Authorization: `Bearer ${token}`,
+                apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                id: userId,
+                email: user?.primaryEmailAddress?.emailAddress,
+                full_name: user?.fullName || "",
+                nickname: user?.username || "",
+              }),
+            },
+          );
+          if (createResponse.ok) {
+            const newProfile = await createResponse.json();
+            setProfile(newProfile[0]);
+          }
         }
       }
     } catch (error) {
@@ -103,21 +181,192 @@ const Profile = () => {
     }
   };
 
+  const loadQuizHistory = async () => {
+    if (!userId) return;
+
+    try {
+      const token = await getToken();
+      if (!token) return;
+
+      const response = await fetch(
+        `https://tthxgwmrukvbnggpabbs.supabase.co/rest/v1/quiz_attempts?select=*&user_id=eq.${userId}&order=created_at.desc`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+        },
+      );
+
+      if (response.ok) {
+        const data: any[] = await response.json();
+        setAttempts(data || []);
+
+        // Calculate overall statistics
+        if (data && data.length > 0) {
+          const totalTests = data.length;
+          const avgScore =
+            data.reduce((sum: number, a: any) => sum + (a.score || 0), 0) /
+            totalTests;
+          const totalQuestions = data.reduce(
+            (sum: number, a: any) => sum + (a.total_questions || 0),
+            0,
+          );
+          const totalTime = data.reduce(
+            (sum: number, a: any) => sum + (a.time_elapsed || 0),
+            0,
+          );
+          const bestScore = Math.max(...data.map((a: any) => a.score || 0));
+          const worstScore = Math.min(...data.map((a: any) => a.score || 100));
+
+          // Calculate improvement (first 3 vs last 3)
+          const sortedByDate = [...data].sort(
+            (a, b) =>
+              new Date(a.created_at || 0).getTime() -
+              new Date(b.created_at || 0).getTime(),
+          );
+          const firstHalf = sortedByDate.slice(
+            0,
+            Math.floor(sortedByDate.length / 2),
+          );
+          const secondHalf = sortedByDate.slice(
+            -Math.floor(sortedByDate.length / 2),
+          );
+          const firstAvg =
+            firstHalf.reduce((sum, a) => sum + (a.score || 0), 0) /
+            (firstHalf.length || 1);
+          const secondAvg =
+            secondHalf.reduce((sum, a) => sum + (a.score || 0), 0) /
+            (secondHalf.length || 1);
+          const improvement = secondAvg - firstAvg;
+
+          // Calculate streak (consecutive days with tests)
+          let streak = 0;
+          const dates = [
+            ...new Set(data.map((a: any) => a.created_at?.split("T")[0])),
+          ]
+            .filter(Boolean)
+            .sort()
+            .reverse();
+          for (let i = 0; i < dates.length; i++) {
+            const currentDate = new Date(dates[i]);
+            const expectedDate = new Date();
+            expectedDate.setDate(expectedDate.getDate() - i);
+            if (currentDate.toDateString() === expectedDate.toDateString()) {
+              streak++;
+            } else {
+              break;
+            }
+          }
+
+          setOverallStats({
+            totalTests,
+            averageScore: Math.round(avgScore),
+            totalQuestions,
+            totalTime,
+            bestScore,
+            worstScore,
+            improvement: Math.round(improvement),
+            streak,
+          });
+
+          // Calculate subject-wise statistics
+          const subjectMap = new Map<
+            string,
+            { scores: number[]; total: number; attempts: number }
+          >();
+          data.forEach((attempt: any) => {
+            const subject = attempt.test_type;
+            if (!subjectMap.has(subject)) {
+              subjectMap.set(subject, { scores: [], total: 0, attempts: 0 });
+            }
+            const stats = subjectMap.get(subject)!;
+            stats.scores.push(attempt.score || 0);
+            stats.total += attempt.total_questions || 0;
+            stats.attempts++;
+          });
+
+          const subjectStatsArray: SubjectStats[] = [];
+          subjectMap.forEach((stats, subject) => {
+            const scores = stats.scores;
+            const avgScore = scores.reduce((a, b) => a + b, 0) / scores.length;
+            const bestScore = Math.max(...scores);
+            const worstScore = Math.min(...scores);
+            const firstScore = scores[0];
+            const lastScore = scores[scores.length - 1];
+            const improvement = lastScore - firstScore;
+
+            subjectStatsArray.push({
+              subject,
+              attempts: stats.attempts,
+              averageScore: Math.round(avgScore),
+              bestScore,
+              worstScore,
+              totalQuestions: stats.total,
+              improvement: Math.round(improvement),
+            });
+          });
+          setSubjectStats(subjectStatsArray);
+
+          // Set recent activity (last 5 attempts)
+          setRecentActivity(data.slice(0, 5));
+
+          // Set score trend for chart (last 10 attempts in chronological order)
+          const trendData = [...data]
+            .reverse()
+            .slice(-10)
+            .map((attempt: any) => {
+              let dateString = "Unknown";
+              if (attempt.created_at) {
+                try {
+                  const dateObj = new Date(attempt.created_at);
+                  if (!isNaN(dateObj.getTime())) {
+                    dateString = dateObj.toLocaleDateString();
+                  }
+                } catch (e) {
+                  // Keep default
+                }
+              }
+              return {
+                date: dateString,
+                score: attempt.score || 0,
+                test: attempt.test_type,
+              };
+            });
+          setScoreTrend(trendData);
+        }
+      }
+    } catch (error) {
+      console.error("Error loading quiz history:", error);
+    }
+  };
+
   const handleUpdateProfile = async () => {
     if (!userId) return;
 
     setUpdating(true);
     try {
-      const { error } = await supabase
-        .from("profiles")
-        .update({
-          full_name: editData.full_name,
-          nickname: editData.nickname,
-          updated_at: new Date().toISOString(),
-        })
-        .eq("id", userId);
+      const token = await getToken();
+      if (!token) throw new Error("No token");
 
-      if (error) throw error;
+      const response = await fetch(
+        `https://tthxgwmrukvbnggpabbs.supabase.co/rest/v1/profiles?id=eq.${userId}`,
+        {
+          method: "PATCH",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            full_name: editData.full_name,
+            nickname: editData.nickname,
+            updated_at: new Date().toISOString(),
+          }),
+        },
+      );
+
+      if (!response.ok) throw new Error("Failed to update profile");
 
       toast({
         title: "Success",
@@ -148,21 +397,30 @@ const Profile = () => {
 
     setDeleting(true);
     try {
-      // First delete user data from profiles table
-      const { error: profileError } = await supabase
-        .from("profiles")
-        .delete()
-        .eq("id", userId);
+      const token = await getToken();
+      if (!token) throw new Error("No token");
 
-      if (profileError) throw profileError;
+      await fetch(
+        `https://tthxgwmrukvbnggpabbs.supabase.co/rest/v1/profiles?id=eq.${userId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+        },
+      );
 
-      // Delete quiz attempts
-      const { error: attemptsError } = await supabase
-        .from("quiz_attempts")
-        .delete()
-        .eq("user_id", userId);
-
-      if (attemptsError) throw attemptsError;
+      await fetch(
+        `https://tthxgwmrukvbnggpabbs.supabase.co/rest/v1/quiz_attempts?user_id=eq.${userId}`,
+        {
+          method: "DELETE",
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+        },
+      );
 
       toast({
         title: "Account Deleted",
@@ -180,6 +438,25 @@ const Profile = () => {
     } finally {
       setDeleting(false);
     }
+  };
+
+  const formatTime = (seconds: number) => {
+    const hours = Math.floor(seconds / 3600);
+    const minutes = Math.floor((seconds % 3600) / 60);
+    if (hours > 0) {
+      return `${hours}h ${minutes}m`;
+    }
+    return `${minutes}m`;
+  };
+
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return "text-green-600";
+    if (score >= 60) return "text-yellow-600";
+    return "text-red-600";
+  };
+
+  const chartConfig = {
+    score: { label: "Score", color: "#3b82f6" },
   };
 
   if (loading) {
@@ -231,14 +508,206 @@ const Profile = () => {
               My Profile
             </h1>
             <p className="text-xl text-gray-600">
-              Manage your account settings and track your progress
+              Track your progress and manage your account
             </p>
           </div>
 
-          {/* Weekly Summary Section */}
-          <div className="mb-8">
-            <WeeklySummary />
-          </div>
+          {/* Statistics Cards */}
+          {overallStats.totalTests > 0 && (
+            <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4 mb-8">
+              <Card className="bg-gradient-to-br from-blue-50 to-blue-100">
+                <CardContent className="p-4 text-center">
+                  <Award className="w-8 h-8 text-blue-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-blue-600">
+                    {overallStats.totalTests}
+                  </p>
+                  <p className="text-xs text-gray-600">Tests Taken</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-green-50 to-green-100">
+                <CardContent className="p-4 text-center">
+                  <TrendingUp className="w-8 h-8 text-green-600 mx-auto mb-2" />
+                  <p
+                    className={`text-2xl font-bold ${getScoreColor(overallStats.averageScore)}`}
+                  >
+                    {overallStats.averageScore}%
+                  </p>
+                  <p className="text-xs text-gray-600">Avg Score</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-purple-50 to-purple-100">
+                <CardContent className="p-4 text-center">
+                  <Target className="w-8 h-8 text-purple-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-purple-600">
+                    {overallStats.bestScore}%
+                  </p>
+                  <p className="text-xs text-gray-600">Best Score</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-orange-50 to-orange-100">
+                <CardContent className="p-4 text-center">
+                  <Zap className="w-8 h-8 text-orange-600 mx-auto mb-2" />
+                  <p
+                    className={`text-2xl font-bold ${overallStats.improvement >= 0 ? "text-green-600" : "text-red-600"}`}
+                  >
+                    {overallStats.improvement >= 0 ? "+" : ""}
+                    {overallStats.improvement}%
+                  </p>
+                  <p className="text-xs text-gray-600">Improvement</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-cyan-50 to-cyan-100">
+                <CardContent className="p-4 text-center">
+                  <Clock className="w-8 h-8 text-cyan-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-cyan-600">
+                    {formatTime(overallStats.totalTime)}
+                  </p>
+                  <p className="text-xs text-gray-600">Study Time</p>
+                </CardContent>
+              </Card>
+              <Card className="bg-gradient-to-br from-amber-50 to-amber-100">
+                <CardContent className="p-4 text-center">
+                  <CalendarDays className="w-8 h-8 text-amber-600 mx-auto mb-2" />
+                  <p className="text-2xl font-bold text-amber-600">
+                    {overallStats.streak}
+                  </p>
+                  <p className="text-xs text-gray-600">Day Streak</p>
+                </CardContent>
+              </Card>
+            </div>
+          )}
+
+          {/* Score Trend Chart */}
+          {scoreTrend.length > 0 && (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <LineChart className="w-5 h-5 text-blue-600" />
+                  Score Progress
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <ChartContainer config={chartConfig} className="h-64">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <ReLineChart data={scoreTrend}>
+                      <CartesianGrid strokeDasharray="3 3" />
+                      <XAxis dataKey="date" />
+                      <YAxis domain={[0, 100]} />
+                      <ChartTooltip content={<ChartTooltipContent />} />
+                      <Line
+                        type="monotone"
+                        dataKey="score"
+                        stroke="#3b82f6"
+                        strokeWidth={2}
+                        dot={{ fill: "#3b82f6", r: 4 }}
+                      />
+                    </ReLineChart>
+                  </ResponsiveContainer>
+                </ChartContainer>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Subject Performance */}
+          {subjectStats.length > 0 && (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <BarChart3 className="w-5 h-5 text-purple-600" />
+                  Subject Performance
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-4">
+                  {subjectStats.map((subject, idx) => (
+                    <div key={idx}>
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="font-medium text-gray-700">
+                          {subject.subject}
+                        </span>
+                        <div className="flex items-center gap-3">
+                          <Badge variant="outline" className="text-xs">
+                            {subject.attempts} attempts
+                          </Badge>
+                          <span
+                            className={`text-sm font-bold ${getScoreColor(subject.averageScore)}`}
+                          >
+                            {subject.averageScore}%
+                          </span>
+                        </div>
+                      </div>
+                      <Progress value={subject.averageScore} className="h-2" />
+                      <div className="flex justify-between text-xs text-gray-500 mt-1">
+                        <span>Best: {subject.bestScore}%</span>
+                        <span>Worst: {subject.worstScore}%</span>
+                        <span
+                          className={
+                            subject.improvement >= 0
+                              ? "text-green-600"
+                              : "text-red-600"
+                          }
+                        >
+                          {subject.improvement >= 0 ? "+" : ""}
+                          {subject.improvement}%
+                        </span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Recent Activity */}
+          {recentActivity.length > 0 && (
+            <Card className="mb-8">
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                  <Activity className="w-5 h-5 text-green-600" />
+                  Recent Activity
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="space-y-3">
+                  {recentActivity.map((attempt, idx) => (
+                    <div
+                      key={idx}
+                      className="flex items-center justify-between p-3 bg-gray-50 rounded-lg hover:bg-gray-100 transition-colors"
+                    >
+                      <div className="flex items-center gap-3">
+                        {attempt.score >= 80 ? (
+                          <CheckCircle2 className="w-5 h-5 text-green-500" />
+                        ) : attempt.score >= 60 ? (
+                          <Activity className="w-5 h-5 text-yellow-500" />
+                        ) : (
+                          <XCircle className="w-5 h-5 text-red-500" />
+                        )}
+                        <div>
+                          <p className="font-medium text-gray-900">
+                            {attempt.test_title}
+                          </p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(attempt.created_at).toLocaleDateString()}{" "}
+                            • {attempt.total_questions} questions
+                          </p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <p
+                          className={`text-lg font-bold ${getScoreColor(attempt.score)}`}
+                        >
+                          {attempt.score}%
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {formatTime(attempt.time_elapsed)}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           <div className="grid md:grid-cols-2 gap-8">
             {/* Profile Information */}
@@ -414,6 +883,11 @@ const Profile = () => {
                 </div>
               </div>
             </Card>
+          </div>
+
+          {/* Weekly Summary */}
+          <div className="mt-8">
+            <WeeklySummary />
           </div>
 
           {/* AI-Powered Smart Dashboard */}

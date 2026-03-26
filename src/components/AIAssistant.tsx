@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Bot,
   Send,
@@ -13,10 +14,14 @@ import {
   MessageSquare,
   Sparkles,
   Loader2,
+  CheckCircle2,
+  Calendar,
+  Target,
 } from "lucide-react";
 import { useClerkAuth } from "@/hooks/useClerkAuth";
 import { supabase } from "@/integrations/supabase/client";
 import { aiService } from "@/lib/ai-service";
+import SmartStudyPlanner from "./SmartStudyPlanner";
 
 interface Message {
   id: string;
@@ -26,9 +31,10 @@ interface Message {
 }
 
 const AIAssistant = () => {
-  const { userId, user } = useClerkAuth();
+  const { userId, user, getToken } = useClerkAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isMinimized, setIsMinimized] = useState(false);
+  const [activeTab, setActiveTab] = useState("chat");
   const [messages, setMessages] = useState<Message[]>([
     {
       id: "1",
@@ -58,28 +64,39 @@ const AIAssistant = () => {
   };
 
   const fetchUserProgress = async () => {
+    if (!userId) return;
+
     try {
-      const { data: attempts, error } = await supabase
-        .from("quiz_attempts")
-        .select("*")
-        .eq("user_id", userId)
-        .order("created_at", { ascending: false });
+      const token = await getToken();
+      if (!token) return;
 
-      if (error) throw error;
+      const response = await fetch(
+        `https://tthxgwmrukvbnggpabbs.supabase.co/rest/v1/quiz_attempts?select=*&user_id=eq.${userId}&order=created_at.desc&limit=10`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+            apikey: import.meta.env.VITE_SUPABASE_ANON_KEY,
+          },
+        },
+      );
 
-      if (attempts && attempts.length > 0) {
-        const averageScore =
-          attempts.reduce((sum, a) => sum + a.score, 0) / attempts.length;
-        const weakTopics = [
-          ...new Set(attempts.flatMap((a) => a.weak_topics || [])),
-        ];
+      if (response.ok) {
+        const attempts = await response.json();
+        if (attempts && attempts.length > 0) {
+          const averageScore =
+            attempts.reduce((sum: number, a: any) => sum + a.score, 0) /
+            attempts.length;
+          const weakTopics = [
+            ...new Set(attempts.flatMap((a: any) => a.weak_topics || [])),
+          ];
 
-        setUserProgress({
-          totalTests: attempts.length,
-          averageScore: Math.round(averageScore),
-          weakTopics,
-          recentTests: attempts.slice(0, 3),
-        });
+          setUserProgress({
+            totalTests: attempts.length,
+            averageScore: Math.round(averageScore),
+            weakTopics,
+            recentTests: attempts.slice(0, 3),
+          });
+        }
       }
     } catch (error) {
       console.error("Error fetching user progress:", error);
@@ -142,7 +159,6 @@ const AIAssistant = () => {
 
   const fetchAIResponse = async (context: string): Promise<string> => {
     try {
-      // Use OpenAI API directly or through your backend
       const response = await fetch(
         "https://api.openai.com/v1/chat/completions",
         {
@@ -209,7 +225,7 @@ const AIAssistant = () => {
       className={`fixed z-50 shadow-2xl transition-all duration-300 ${
         isMinimized
           ? "bottom-6 right-6 w-80 h-14"
-          : "bottom-6 right-6 w-96 h-[600px]"
+          : "bottom-6 right-6 w-[450px] h-[650px]"
       }`}
     >
       <CardHeader className="p-4 bg-gradient-to-r from-blue-600 to-purple-600 text-white rounded-t-lg">
@@ -247,88 +263,130 @@ const AIAssistant = () => {
       {!isMinimized && (
         <>
           <CardContent className="p-0 flex flex-col h-[calc(100%-60px)]">
-            <ScrollArea className="flex-1 p-4">
-              <div className="space-y-4">
-                {messages.map((message) => (
-                  <div
-                    key={message.id}
-                    className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}
-                  >
-                    <div
-                      className={`flex gap-2 max-w-[80%] ${
-                        message.type === "user"
-                          ? "flex-row-reverse"
-                          : "flex-row"
-                      }`}
-                    >
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback
-                          className={
-                            message.type === "user"
-                              ? "bg-blue-500 text-white"
-                              : "bg-purple-500 text-white"
-                          }
-                        >
-                          {message.type === "user" ? "U" : "AI"}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div
-                        className={`p-3 rounded-lg ${
-                          message.type === "user"
-                            ? "bg-blue-500 text-white"
-                            : "bg-gray-100 text-gray-900"
-                        }`}
-                      >
-                        <p className="text-sm whitespace-pre-wrap">
-                          {message.content}
-                        </p>
-                        <p className="text-xs mt-1 opacity-70">
-                          {message.timestamp.toLocaleTimeString()}
-                        </p>
-                      </div>
-                    </div>
-                  </div>
-                ))}
-                {isLoading && (
-                  <div className="flex justify-start">
-                    <div className="flex gap-2">
-                      <Avatar className="h-8 w-8">
-                        <AvatarFallback className="bg-purple-500 text-white">
-                          AI
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="p-3 bg-gray-100 rounded-lg">
-                        <Loader2 className="w-4 h-4 animate-spin" />
-                      </div>
-                    </div>
-                  </div>
-                )}
-                <div ref={messagesEndRef} />
-              </div>
-            </ScrollArea>
-
-            <div className="p-4 border-t">
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Ask me anything about your NUET preparation..."
-                  value={inputMessage}
-                  onChange={(e) => setInputMessage(e.target.value)}
-                  onKeyPress={handleKeyPress}
-                  disabled={isLoading}
-                  className="flex-1"
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={isLoading || !inputMessage.trim()}
-                  className="bg-gradient-to-r from-blue-600 to-purple-600"
+            <Tabs
+              defaultValue="chat"
+              value={activeTab}
+              onValueChange={setActiveTab}
+              className="flex-1 flex flex-col"
+            >
+              <TabsList className="grid grid-cols-2 mx-4 mt-2">
+                <TabsTrigger value="chat" className="flex items-center gap-2">
+                  <MessageSquare className="w-4 h-4" />
+                  Chat Assistant
+                </TabsTrigger>
+                <TabsTrigger
+                  value="planner"
+                  className="flex items-center gap-2"
                 >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-              <p className="text-xs text-gray-500 mt-2 text-center">
-                Ask about your progress, study plans, or specific topics!
-              </p>
-            </div>
+                  <CheckCircle2 className="w-4 h-4" />
+                  Study Planner
+                </TabsTrigger>
+              </TabsList>
+
+              <TabsContent
+                value="chat"
+                className="flex-1 flex flex-col overflow-hidden data-[state=active]:flex-1"
+              >
+                <ScrollArea className="flex-1 p-4">
+                  <div className="space-y-4">
+                    {messages.map((message) => (
+                      <div
+                        key={message.id}
+                        className={`flex ${message.type === "user" ? "justify-end" : "justify-start"}`}
+                      >
+                        <div
+                          className={`flex gap-2 max-w-[80%] ${
+                            message.type === "user"
+                              ? "flex-row-reverse"
+                              : "flex-row"
+                          }`}
+                        >
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback
+                              className={
+                                message.type === "user"
+                                  ? "bg-blue-500 text-white"
+                                  : "bg-purple-500 text-white"
+                              }
+                            >
+                              {message.type === "user" ? "U" : "AI"}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div
+                            className={`p-3 rounded-lg ${
+                              message.type === "user"
+                                ? "bg-blue-500 text-white"
+                                : "bg-gray-100 text-gray-900"
+                            }`}
+                          >
+                            <p className="text-sm whitespace-pre-wrap">
+                              {message.content}
+                            </p>
+                            <p className="text-xs mt-1 opacity-70">
+                              {message.timestamp.toLocaleTimeString()}
+                            </p>
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                    {isLoading && (
+                      <div className="flex justify-start">
+                        <div className="flex gap-2">
+                          <Avatar className="h-8 w-8">
+                            <AvatarFallback className="bg-purple-500 text-white">
+                              AI
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="p-3 bg-gray-100 rounded-lg">
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          </div>
+                        </div>
+                      </div>
+                    )}
+                    <div ref={messagesEndRef} />
+                  </div>
+                </ScrollArea>
+
+                <div className="p-4 border-t">
+                  <div className="flex gap-2">
+                    <Input
+                      placeholder="Ask me anything about your NUET preparation..."
+                      value={inputMessage}
+                      onChange={(e) => setInputMessage(e.target.value)}
+                      onKeyPress={handleKeyPress}
+                      disabled={isLoading}
+                      className="flex-1"
+                    />
+                    <Button
+                      onClick={handleSendMessage}
+                      disabled={isLoading || !inputMessage.trim()}
+                      className="bg-gradient-to-r from-blue-600 to-purple-600"
+                    >
+                      <Send className="w-4 h-4" />
+                    </Button>
+                  </div>
+                  <p className="text-xs text-gray-500 mt-2 text-center">
+                    Ask about your progress, study plans, or specific topics!
+                  </p>
+                </div>
+              </TabsContent>
+
+              <TabsContent
+                value="planner"
+                className="flex-1 overflow-y-auto p-4 data-[state=active]:flex-1"
+              >
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2 mb-4">
+                    <Target className="w-5 h-5 text-purple-600" />
+                    <h3 className="font-semibold text-gray-900">
+                      Smart Study Planner
+                    </h3>
+                    <Sparkles className="w-4 h-4 text-yellow-500" />
+                  </div>
+                  <SmartStudyPlanner />
+                </div>
+              </TabsContent>
+            </Tabs>
           </CardContent>
         </>
       )}

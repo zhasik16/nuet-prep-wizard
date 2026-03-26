@@ -26,32 +26,40 @@ export const explanationService = {
   ): Promise<AIExplanation> {
     try {
       const prompt = `
-        You are a NUET exam tutor. Provide a detailed explanation for this question:
+  You are a NUET exam tutor. Provide a detailed explanation for this question:
 
-        Topic: ${topic}
-        Question: ${question}
-        ${options ? `Options: ${options.join(', ')}` : ''}
-        User's Answer: ${userAnswer}
-        Correct Answer: ${correctAnswer}
+  Topic: ${topic}
+  Question: ${question}
+  ${options ? `Options: ${options.join(', ')}` : ''}
+  User's Answer: ${userAnswer}
+  Correct Answer: ${correctAnswer}
 
-        Please provide:
-        1. A step-by-step solution (break it down into clear steps)
-        2. Key concepts being tested
-        3. Common mistake that leads to the wrong answer
-        4. Study tips for this topic
-        5. Related topics to review
-        ${topic === 'Math' ? '6. Any formulas used' : ''}
+  Please provide:
+  1. A COMPLETE step-by-step solution showing ALL work (like you're solving it on a whiteboard):
+     - Start with what's given
+     - Show each mathematical operation
+     - Explain WHY each step is done
+     - Show intermediate calculations
+     - End with the final answer
+  2. Key concepts being tested
+  3. Common mistake that leads to the wrong answer
+  4. Study tips for this topic
+  5. Related topics to review
+  ${topic === 'Math' ? '6. Any formulas used (write them out fully)' : ''}
 
-        Format as JSON with these exact keys:
-        {
-          "stepByStep": ["step1", "step2", "step3"],
-          "keyConcepts": ["concept1", "concept2"],
-          "commonMistake": "description of common mistake",
-          "tips": "study tips",
-          "relatedTopics": ["topic1", "topic2"],
-          ${topic === 'Math' ? '"formulaUsed": "formula description"' : ''}
-        }
-      `;
+  For the step-by-step solution, be extremely detailed. If it's a math problem, show actual numbers and calculations.
+  If it's a critical thinking problem, show the logical reasoning flow.
+
+  Format as JSON with these exact keys:
+  {
+    "stepByStep": ["detailed step 1", "detailed step 2", ...],
+    "keyConcepts": ["concept1", "concept2"],
+    "commonMistake": "description of common mistake",
+    "tips": "study tips",
+    "relatedTopics": ["topic1", "topic2"],
+    ${topic === 'Math' ? '"formulaUsed": "formula with explanation"' : ''}
+  }
+`;
 
       const response = await openai.chat.completions.create({
         model: 'gpt-3.5-turbo',
